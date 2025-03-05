@@ -61,16 +61,16 @@ The grass blades are always (atleast trying) to look to the camera from all angl
 The material includes a lot of parameters to customize the look.</br></br>
 ![image](https://github.com/user-attachments/assets/ca5d7ff4-063a-49a3-bebb-c8bc92162576)
 
-# Performance
+## Performance
 With: Spacing = 0.1 | DrawDistance = 300 | Full Density Distance = 40 | Grass Subdivision = 2
 In 1080p, I get an average fps of 200 in my RTX 3060.
 
 It's around 20M position tested and 800K visible grass blades rendered every frame.
 
-# To be Added
+## To be Added
 - We are testing more that 20M position and adding to the buffer only 800K, so maybe we could lower the size of the compute dispatch by implementing Chunking (Somehow, not sure if that's possible in this setup)
 - LOD cause we are always drawing the same subdivided grass blade even in far distances.
 
-# References
+## References
 - Colin Leung Repo: https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample
 - Eric Hu Repo : https://github.com/EricHu33/UnityGrassIndirectRenderingExample
