@@ -77,9 +77,10 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         float distanceFromCamera = length(_CameraPosition - positionWS);
 
         // 1 at the camera and 0 at the draw distance
-    	float falloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
-    	falloff = falloff * falloff;
-    	falloff = falloff * falloff;
+        float falloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
+        falloff = falloff * falloff;
+        falloff = falloff * falloff;
+        float blendFactor = 1.0 - falloff;
         float densityFactor = falloff * _FullDensityDistance;
 
         // Stable random value based on cell coordinates
@@ -94,7 +95,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _DrawDistance)
             {
                 //Finally after succeeding all the tests our little position is appended to the buffer
-                _GrassPositions.Append(float4(positionWS, distanceFromCamera));
+                _GrassPositions.Append(float4(positionWS, blendFactor));
             }
         }
     }

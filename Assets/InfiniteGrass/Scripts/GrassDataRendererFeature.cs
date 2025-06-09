@@ -40,6 +40,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private RTHandle maskRT;
         private RTHandle colorRT;
         private RTHandle slopeRT;
+        private RTHandle groundColorRT;
 
         private LayerMask heightMapLayer;
         private Material heightMapMat;
@@ -65,6 +66,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             RenderingUtils.ReAllocateIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
+            RenderingUtils.ReAllocateIfNeeded(ref groundColorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
             
             ConfigureTarget(heightRT, heightDepthRT);
             ConfigureClear(ClearFlag.All, Color.black);
@@ -130,6 +132,20 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
             }
 
+            // Render ground albedo for color blending
+            cmd.SetRenderTarget(groundColorRT);
+            cmd.ClearRenderTarget(true, true, new Color(0, 0, 0, 0));
+
+            using (new ProfilingScope(cmd, new ProfilingSampler("Ground Color RT")))
+            {
+                context.ExecuteCommandBuffer(cmd);
+                cmd.Clear();
+
+                var drawSetting = CreateDrawingSettings(shaderTagsList, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
+                var filterSetting = new FilteringSettings(RenderQueueRange.all, heightMapLayer);
+                context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
+            }
+
             cmd.SetRenderTarget(colorRT);
             cmd.ClearRenderTarget(true, true, new Color(0, 0, 0, 0));
 
@@ -158,6 +174,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             cmd.SetGlobalTexture("_GrassColorRT", colorRT);//Set the COLOR and SLOPE textures as global
             cmd.SetGlobalTexture("_GrassSlopeRT", slopeRT);
+            cmd.SetGlobalTexture("_GroundColorRT", groundColorRT);
 
             //Finally we reset the camera matricies to the original ones
             cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
@@ -248,6 +265,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             maskRT?.Release();
             colorRT?.Release();
             slopeRT?.Release();
+            groundColorRT?.Release();
             grassPositionsBuffer?.Release();
         }
     }

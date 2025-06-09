@@ -7,6 +7,7 @@
         _ColorA("ColorA", Color) = (0,0,0,1)
         _ColorB("ColorB", Color) = (1,1,1,1)
         _AOColor("AO Color", Color) = (0.5,0.5,0.5)
+        _GroundColorRT("Ground Color", 2D) = "white" {}
 
         [Header(Grass Shape)][Space]
         _GrassWidth("Grass Width", Float) = 1
@@ -100,6 +101,7 @@
 
             sampler2D _GrassColorRT;
             sampler2D _GrassSlopeRT;
+            sampler2D _GroundColorRT;
 
             half3 ApplySingleDirectLight(Light light, half3 N, half3 V, half3 albedo, half mask, half positionY)
             {
@@ -167,7 +169,8 @@
 
                 float4 positionData = _GrassPositions[instanceID];
                 float3 pivot = positionData.xyz;
-                float distanceFromCamera = positionData.w;
+                float blendFactor = positionData.w;
+                float distanceFromCamera = length(_WorldSpaceCameraPos - pivot);
 
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
@@ -226,6 +229,10 @@
 
                 float4 color = tex2Dlod(_GrassColorRT, float4(uv, 0, 0));
                 albedo = lerp(albedo, color.rgb, color.a);
+
+                // Blend with ground color based on distance from camera
+                half3 ground = tex2Dlod(_GroundColorRT, float4(uv, 0, 0)).rgb;
+                albedo = lerp(albedo, ground, blendFactor * (1 - quantizedY));
 
                 //Lighting Stuff
                 half3 N = normalize(bladeDirection + cameraTransformForwardWS * -0.5 + _RandomNormal * half3(srandom(pivot.x * 314 + pivot.z * 10), 0, srandom(pivot.z * 677 + pivot.x * 10)));
