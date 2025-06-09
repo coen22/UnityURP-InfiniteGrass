@@ -185,7 +185,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 int height = renderingData.cameraData.camera.pixelHeight;
 
                 int initKernel = hizShader.FindKernel("InitDepth");
-                hizShader.SetTexture(initKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTarget);
+                hizShader.SetTexture(initKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
                 hizShader.SetTexture(initKernel, "_HiZTexture", hiZRT);
                 hizShader.SetVector("_Size", new Vector2(width, height));
                 cmd.DispatchCompute(hizShader, initKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
