@@ -17,6 +17,9 @@ float4x4 _VPMatrix;
 
 SamplerState linearClampSampler;
 
+Texture2D<float> _HiZTexture;
+int _HiZMipCount;
+
 //Generated and passedby the Custom Renderer Feature
 Texture2D<float2> _GrassHeightMapRT;
 Texture2D<float> _GrassMaskMapRT;
@@ -89,12 +92,33 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         if (insideDensityLevel)
         {
             //Frustum culling using the clip position (Taken from Colin Leung repo)
-            float4 absPosCS = abs(mul(_VPMatrix, float4(positionWS, 1.0)));
-		
+            float4 clipPos = mul(_VPMatrix, float4(positionWS, 1.0));
+            float4 absPosCS = abs(clipPos);
+
             if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _DrawDistance)
             {
-                //Finally after succeeding all the tests our little position is appended to the buffer
-                _GrassPositions.Append(float4(positionWS, distanceFromCamera));
+                bool occluded = false;
+                float2 hizUV = clipPos.xy / clipPos.w * 0.5 + 0.5;
+
+                float2 uv = hizUV;
+                for (int i = 0; i < 16; i++)
+                {
+                    if (i >= _HiZMipCount) break;
+                    float d = _HiZTexture.SampleLevel(linearClampSampler, uv, i);
+                    if (clipPos.z / clipPos.w <= d + 1e-4)
+                    {
+                        occluded = false;
+                        break;
+                    }
+                    occluded = true;
+                    uv *= 0.5;
+                }
+
+                if (!occluded)
+                {
+                    //Finally after succeeding all the tests our little position is appended to the buffer
+                    _GrassPositions.Append(float4(positionWS, distanceFromCamera));
+                }
             }
         }
     }

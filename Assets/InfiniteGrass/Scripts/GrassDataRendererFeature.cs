@@ -9,12 +9,13 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
     [SerializeField] private LayerMask heightMapLayer;
     [SerializeField] private Material heightMapMat;
     [SerializeField] private ComputeShader computeShader;
+    [SerializeField] private ComputeShader hizShader;
 
     GrassDataPass grassDataPass;
 
     public override void Create()
     {
-        grassDataPass = new GrassDataPass(heightMapLayer, heightMapMat, computeShader);
+        grassDataPass = new GrassDataPass(heightMapLayer, heightMapMat, computeShader, hizShader);
         grassDataPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
     }
 
@@ -40,16 +41,20 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private RTHandle maskRT;
         private RTHandle colorRT;
         private RTHandle slopeRT;
+        private RTHandle hiZRT;
+        private int hiZMipCount;
 
         private LayerMask heightMapLayer;
         private Material heightMapMat;
 
         private ComputeShader computeShader;
+        private ComputeShader hizShader;
 
-        public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
+        public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader, ComputeShader hizShader)
         {
             this.heightMapLayer = heightMapLayer;
             this.computeShader = computeShader;
+            this.hizShader = hizShader;
             this.heightMapMat = heightMapMat;
 
             shaderTagsList.Add(new ShaderTagId("SRPDefaultUnlit"));
@@ -65,7 +70,15 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             RenderingUtils.ReAllocateIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            
+            int width = renderingData.cameraData.camera.pixelWidth;
+            int height = renderingData.cameraData.camera.pixelHeight;
+            RenderTextureDescriptor hizDesc = new RenderTextureDescriptor(width, height, RenderTextureFormat.RFloat, 0);
+            hizDesc.useMipMap = true;
+            hizDesc.autoGenerateMips = false;
+            hizDesc.enableRandomWrite = true;
+            RenderingUtils.ReAllocateIfNeeded(ref hiZRT, hizDesc, FilterMode.Point);
+            hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
+
             ConfigureTarget(heightRT, heightDepthRT);
             ConfigureClear(ClearFlag.All, Color.black);
         }
@@ -165,6 +178,33 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
+            // Generate Hi-Z depth pyramid for occlusion culling
+            if (hizShader != null)
+            {
+                int width = renderingData.cameraData.camera.pixelWidth;
+                int height = renderingData.cameraData.camera.pixelHeight;
+
+                int initKernel = hizShader.FindKernel("InitDepth");
+                hizShader.SetTexture(initKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTarget);
+                hizShader.SetTexture(initKernel, "_HiZTexture", hiZRT);
+                hizShader.SetVector("_Size", new Vector2(width, height));
+                cmd.DispatchCompute(hizShader, initKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
+
+                int downKernel = hizShader.FindKernel("Downsample");
+                for (int m = 1; m < hiZMipCount; m++)
+                {
+                    int w = Mathf.Max(1, width >> m);
+                    int h = Mathf.Max(1, height >> m);
+                    hizShader.SetInt("_MipLevel", m);
+                    hizShader.SetVector("_Size", new Vector2(w, h));
+                    hizShader.SetTexture(downKernel, "_HiZTexture", hiZRT);
+                    cmd.DispatchCompute(hizShader, downKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
+                }
+
+                cmd.SetGlobalTexture("_HiZTexture", hiZRT);
+                cmd.SetGlobalInt("_HiZMipCount", hiZMipCount);
+            }
+
             //After finishing rendering the textures
             //We compute the grass positions buffer
             Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(cameraBounds.size.x / spacing), Mathf.CeilToInt(cameraBounds.size.z / spacing));
@@ -188,6 +228,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             computeShader.SetBuffer(0, "_GrassPositions", grassPositionsBuffer);
             computeShader.SetTexture(0, "_GrassHeightMapRT", heightRT);
             computeShader.SetTexture(0, "_GrassMaskMapRT", maskRT);
+            computeShader.SetTexture(0, "_HiZTexture", hiZRT);
+            computeShader.SetInt("_HiZMipCount", hiZMipCount);
 
             grassPositionsBuffer.SetCounterValue(0);
 
@@ -250,6 +292,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             maskRT?.Release();
             colorRT?.Release();
             slopeRT?.Release();
+            hiZRT?.Release();
             grassPositionsBuffer?.Release();
         }
     }
