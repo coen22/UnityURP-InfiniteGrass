@@ -17,7 +17,9 @@ public class InfiniteGrassRenderer : MonoBehaviour
     [Header("Grass Properties")]
     public float spacing = 0.5f;//Spacing between blades, Please don't make it too low
     public float drawDistance = 300;
-    public float fullDensityDistance = 50;//After this distance, we start removing some blades of grass in sake of performance
+    public float fullDensityDistance = 30;//Distance around the camera kept at full density
+    [Tooltip("Controls how quickly grass fades with distance (higher is steeper)")]
+    public float densityFalloffExponent = 4f;
     public int grassMeshSubdivision = 5;//How many sections you will have in your grass blade mesh, 0 will give a triangle, having more sections will make the wind animation and the curvature looks better
     public float textureUpdateThreshold = 10.0f;//The distance that the camera should move before we update the "Data Textures"
 

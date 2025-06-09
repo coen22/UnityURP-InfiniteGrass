@@ -27,7 +27,8 @@ Also it doesn't require generating a big buffer of positions of the whole world,
 Grass density now fades out smoothly from the camera position to the draw
 distance. Each cell uses a stable random threshold so blades disappear only
 once as you move, preventing flickering in the distance and giving a natural
-transition.</br></br>
+transition. Use the **Density Falloff Exponent** parameter on the
+`InfiniteGrassRenderer` component to control how gradual the fade is.</br></br>
 ![image](https://github.com/user-attachments/assets/0ae48893-7149-47f1-a846-949183c8e9d9)
 
 ### Dynamic Color Modifier:
@@ -61,7 +62,9 @@ Wind from texture, similar to the "Dynamic Slope" but just applied to the whole 
 
 ### Stylized Billboard Grass:
 The grass blades are always (atleast trying) to look to the camera from all angles.</br>
-The material includes a lot of parameters to customize the look.</br></br>
+The material includes a lot of parameters to customize the look. Increasing
+**Expand Distant Grass Width** helps the thin distant blades blend more smoothly
+before they fade out.</br></br>
 ![image](https://github.com/user-attachments/assets/ca5d7ff4-063a-49a3-bebb-c8bc92162576)
 
 ## Performance
@@ -71,8 +74,7 @@ In 1080p, I get an average fps of 200 in my RTX 3060.
 It's around 20M position tested and 800K visible grass blades rendered every frame.
 
 ## To be Added
-- We are testing more that 20M position and adding to the buffer only 800K, so maybe we could lower the size of the compute dispatch by implementing Chunking (Somehow, not sure if that's possible in this setup)
-- LOD cause we are always drawing the same subdivided grass blade even in far distances.
+- We are testing more than 20M positions and adding to the buffer only 800K, so maybe we could lower the size of the compute dispatch by implementing Chunking (Somehow, not sure if that's possible in this setup)
 
 ## References
 - Colin Leung Repo: https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample

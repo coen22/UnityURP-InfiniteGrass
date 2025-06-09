@@ -49,17 +49,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _ExpandDistantGrassWidth: 4
+    - _ExpandDistantGrassWidth: 0.1
     - _FlatNormal: 0.7
     - _GrassCurving: 0.1
-    - _GrassHeight: 0.7
+    - _GrassHeight: 1.5
     - _GrassHeightRandomness: 0.5
     - _GrassWidth: 0.25
     - _GrassWidthRandomness: 0.25
-    - _MaxSubdivision: 2
+    - _MaxSubdivision: 5
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _RandomNormal: 0.2
+    - _RandomNormal: 0.229
     - _WindAFrequency: 4
     - _WindAIntensity: 1.77
     - _WindBFrequency: 7.7
@@ -68,7 +68,8 @@ Material:
     - _WindCIntensity: 0.125
     - _WindStrength: 0.7
     m_Colors:
-    - _AOColor: {r: 0.049987763, g: 0.3207547, b: 0, a: 1}
+    - _AOColor: {r: 0.20022205, g: 0.4716981, b: 0.14907439, a: 1}
+    - _AlphaFadeRange: {r: 200, g: 300, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color1: {r: 0.45098042, g: 0.6666667, b: 0.19215688, a: 1}
     - _Color2: {r: 0.19215688, g: 0.5254902, b: 0.2509804, a: 1}
