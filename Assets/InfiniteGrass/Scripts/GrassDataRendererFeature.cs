@@ -89,6 +89,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float fullDensityDistance = InfiniteGrassRenderer.instance.fullDensityDistance;
             float drawDistance = InfiniteGrassRenderer.instance.drawDistance;
             float maxBufferCount = InfiniteGrassRenderer.instance.maxBufferCount;
+            float densityFalloffExponent = InfiniteGrassRenderer.instance.densityFalloffExponent;
             float textureUpdateThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
 
             Bounds cameraBounds = CalculateCameraBounds(Camera.main, drawDistance);
@@ -174,6 +175,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             computeShader.SetMatrix("_VPMatrix", Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
             computeShader.SetFloat("_FullDensityDistance", fullDensityDistance);
+            computeShader.SetFloat("_DensityFalloffExponent", densityFalloffExponent);
             computeShader.SetVector("_BoundsMin", cameraBounds.min);
             computeShader.SetVector("_BoundsMax", cameraBounds.max);
             computeShader.SetVector("_CameraPosition", Camera.main.transform.position);

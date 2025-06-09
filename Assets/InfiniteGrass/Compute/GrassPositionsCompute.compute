@@ -4,6 +4,7 @@ float _Spacing;
 float _DrawDistance;
 float _TextureUpdateThreshold;
 float _FullDensityDistance;
+float _DensityFalloffExponent;
 
 int2 _GridStartIndex;
 int2 _GridSize;
@@ -77,9 +78,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         float distanceFromCamera = length(_CameraPosition - positionWS);
 
         // 1 at the camera and 0 at the draw distance
-    	float falloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
-    	falloff = falloff * falloff;
-    	falloff = falloff * falloff;
+        float falloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
+        falloff = pow(falloff, _DensityFalloffExponent);
         float densityFactor = falloff * _FullDensityDistance;
 
         // Stable random value based on cell coordinates
