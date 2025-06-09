@@ -73,11 +73,15 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
         //Checking if the grass position is in the density level
         float distanceFromCamera = length(_CameraPosition - positionWS);
-        //Calculate a smooth probability that decreases from the camera position
-        //Density gradually drops from 1 near the camera to almost 0 at '_DrawDistance'
-        float prob = saturate(1 - distanceFromCamera / _DrawDistance);
-        //Leave a tiny chance to spawn a few blades right at the draw distance
-        prob = lerp(0.05, prob, saturate(1 - distanceFromCamera / _DrawDistance));
+        //Density stays full within '_FullDensityDistance' then smoothly fades to
+        //zero at '_DrawDistance'.
+        float prob = 1;
+        if (distanceFromCamera > _FullDensityDistance)
+        {
+            float t = (distanceFromCamera - _FullDensityDistance) /
+                       max(_DrawDistance - _FullDensityDistance, 0.0001);
+            prob = saturate(1 - t);
+        }
 
         //Generate a random value per cell and check it against the probability
         bool insideDensityLevel = random(currentIndex.x + currentIndex.y * 7954) < prob;
