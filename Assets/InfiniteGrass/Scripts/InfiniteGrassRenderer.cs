@@ -70,6 +70,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
         grassMaterial.SetVector("_CenterPos", centerPos);
         grassMaterial.SetFloat("_DrawDistance", drawDistance);
         grassMaterial.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
+        grassMaterial.SetFloat("_MaxSubdivision", grassMeshSubdivision);
 
         //Big Draw Call -------------------------------------------------------------
         Graphics.DrawMeshInstancedIndirect(GetGrassMeshCache(), 0, grassMaterial, cameraBounds, argsBuffer);

@@ -170,7 +170,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             Vector2Int gridStartIndex = new Vector2Int(Mathf.FloorToInt(cameraBounds.min.x / spacing), Mathf.FloorToInt(cameraBounds.min.z / spacing));
 
             grassPositionsBuffer?.Release();
-            grassPositionsBuffer = new ComputeBuffer((int)(1000000 * maxBufferCount), sizeof(float) * 3, ComputeBufferType.Append);
+            grassPositionsBuffer = new ComputeBuffer((int)(1000000 * maxBufferCount), sizeof(float) * 4, ComputeBufferType.Append);
 
             computeShader.SetMatrix("_VPMatrix", Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
             computeShader.SetFloat("_FullDensityDistance", fullDensityDistance);

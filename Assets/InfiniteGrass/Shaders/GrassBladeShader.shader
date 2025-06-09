@@ -26,6 +26,7 @@
 
         [Header(Lighting)][Space]
         _RandomNormal("Random Normal", Range(0, 1)) = 0.1
+        _MaxSubdivision("Max Subdivision", Float) = 5
     }
 
     SubShader
@@ -88,8 +89,9 @@
 
                 float _DrawDistance;
                 float _TextureUpdateThreshold;
+                float _MaxSubdivision;
 
-                StructuredBuffer<float3> _GrassPositions;
+                StructuredBuffer<float4> _GrassPositions;
 
             CBUFFER_END
 
@@ -163,17 +165,23 @@
             {
                 Varyings OUT;
 
-                float3 pivot = _GrassPositions[instanceID];
+                float4 positionData = _GrassPositions[instanceID];
+                float3 pivot = positionData.xyz;
+                float distanceFromCamera = positionData.w;
 
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
 
+                float lodSubdiv = floor(_MaxSubdivision * saturate(1 - distanceFromCamera / _DrawDistance));
+                float step = 1.0 / (lodSubdiv + 1);
+                float quantizedY = round(IN.positionOS.y / step) * step;
+
                 float grassWidth = _GrassWidth * (1 - random(pivot.x * 950 + pivot.z * 10) * _GrassWidthRandomness);
 
-                float distanceFromCamera = length(_WorldSpaceCameraPos - pivot);
+                //distanceFromCamera is provided per instance from the compute shader
                 //Expand the grass width based on the distance from camera
                 grassWidth += saturate(Remap(distanceFromCamera, float2(_ExpandDistantGrassRange.x, _ExpandDistantGrassRange.y), float2(0, 1))) * _ExpandDistantGrassWidth;
-                grassWidth *= (1 - IN.positionOS.y);
+                grassWidth *= (1 - quantizedY);
 
                 //Grass Height
                 float grassHeight = _GrassHeight * (1 - random(pivot.x * 230 + pivot.z * 10) * _GrassHeightRandomness);
@@ -193,16 +201,16 @@
                 half3 windTex = tex2Dlod(_WindTexture, float4(TRANSFORM_TEX(pivot.xz, _WindTexture) + _WindScroll * _Time.y,0,0));
                 float2 wind = (windTex.rg * 2 - 1) * _WindStrength * (1-slope.a);
 
-                bladeDirection.xz += wind * IN.positionOS.y;//Adding wind and multiplying with the Y position to affect the tip only
+                bladeDirection.xz += wind * quantizedY;//Adding wind and multiplying with the Y position to affect the tip only
 
                 bladeDirection = normalize(bladeDirection);
                 
                 float3 rightTangent = normalize(cross(bladeDirection, cameraTransformForwardWS));//The direction we gonna stretch the blade
 
-                float3 positionOS = bladeDirection * IN.positionOS.y * grassHeight 
+                float3 positionOS = bladeDirection * quantizedY * grassHeight
                                     + rightTangent * IN.positionOS.x * grassWidth;//This insures that the blade is always facing the camera
 
-                positionOS.xz += (IN.positionOS.y * IN.positionOS.y) * float2(srandom(pivot.x * 851 + pivot.z * 10), srandom(pivot.z * 647 + pivot.x * 10)) * _GrassCurving;
+                positionOS.xz += (quantizedY * quantizedY) * float2(srandom(pivot.x * 851 + pivot.z * 10), srandom(pivot.z * 647 + pivot.x * 10)) * _GrassCurving;
                 //Adds a bit of curving to grass blade
 
                 //posOS -> posWS
@@ -214,7 +222,7 @@
 
                 half3 baseColor = lerp(_ColorA, _ColorB, tex2Dlod(_BaseColorTexture, float4(TRANSFORM_TEX(pivot.xz, _BaseColorTexture),0,0)).r);
                 
-                half3 albedo = lerp(_AOColor, baseColor, IN.positionOS.y);
+                half3 albedo = lerp(_AOColor, baseColor, quantizedY);
 
                 float4 color = tex2Dlod(_GrassColorRT, float4(uv, 0, 0));
                 albedo = lerp(albedo, color.rgb, color.a);
@@ -224,7 +232,7 @@
                 //The normal vector is just the blade direction tilted a bit towards the camera with a bit of randomness
                 half3 V = normalize(_WorldSpaceCameraPos - positionWS);
 
-                float3 lighting = CalculateLighting(albedo, positionWS, N, V, color.a, IN.positionOS.y);
+                float3 lighting = CalculateLighting(albedo, positionWS, N, V, color.a, quantizedY);
                 //I'm also passing the Alpha Channel of the Color Map cause I dont want the blades that are affected with color to receive specular light 
                 //The main use of the color map for me is burning the grass and the burned grass should not receive specular light
                 
