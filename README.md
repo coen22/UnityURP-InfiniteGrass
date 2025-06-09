@@ -29,6 +29,8 @@ distance. Each cell uses a stable random threshold so blades disappear only
 once as you move, preventing flickering in the distance and giving a natural
 transition. Use the **Density Falloff Exponent** parameter on the
 `InfiniteGrassRenderer` component to control how gradual the fade is.</br></br>
+To further soften the horizon, **Alpha Fade Range** cross-fades the farthest
+blades using transparency so they blend with the terrain.
 ![image](https://github.com/user-attachments/assets/0ae48893-7149-47f1-a846-949183c8e9d9)
 
 ### Dynamic Color Modifier:
@@ -64,7 +66,8 @@ Wind from texture, similar to the "Dynamic Slope" but just applied to the whole 
 The grass blades are always (atleast trying) to look to the camera from all angles.</br>
 The material includes a lot of parameters to customize the look. Increasing
 **Expand Distant Grass Width** helps the thin distant blades blend more smoothly
-before they fade out.</br></br>
+before they fade out. Adjust **Alpha Fade Range** to fade them with transparency
+near the draw distance.</br></br>
 ![image](https://github.com/user-attachments/assets/ca5d7ff4-063a-49a3-bebb-c8bc92162576)
 
 ## Performance
