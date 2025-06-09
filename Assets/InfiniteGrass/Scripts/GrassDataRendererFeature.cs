@@ -43,6 +43,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private RTHandle slopeRT;
         private RTHandle hiZRT;
         private int hiZMipCount;
+        private int hizInitKernel = -1;
+        private int hizDownKernel = -1;
 
         private LayerMask heightMapLayer;
         private Material heightMapMat;
@@ -70,7 +72,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             RenderingUtils.ReAllocateIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
             RenderingUtils.ReAllocateIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            if (hizShader != null)
+            if (hizShader != null && hizShader.HasKernel("InitDepth") && hizShader.HasKernel("Downsample"))
             {
                 int width = renderingData.cameraData.camera.pixelWidth;
                 int height = renderingData.cameraData.camera.pixelHeight;
@@ -80,12 +82,16 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 hizDesc.enableRandomWrite = true;
                 RenderingUtils.ReAllocateIfNeeded(ref hiZRT, hizDesc, FilterMode.Point);
                 hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
+                hizInitKernel = hizShader.FindKernel("InitDepth");
+                hizDownKernel = hizShader.FindKernel("Downsample");
             }
             else
             {
                 hiZMipCount = 0;
                 hiZRT?.Release();
                 hiZRT = null;
+                hizInitKernel = -1;
+                hizDownKernel = -1;
             }
 
             ConfigureTarget(heightRT, heightDepthRT);
@@ -188,26 +194,24 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             cmd.Clear();
 
             // Generate Hi-Z depth pyramid for occlusion culling
-            if (hizShader != null && hiZRT != null)
+            if (hizShader != null && hiZRT != null && hizInitKernel >= 0 && hizDownKernel >= 0)
             {
                 int width = renderingData.cameraData.camera.pixelWidth;
                 int height = renderingData.cameraData.camera.pixelHeight;
 
-                int initKernel = hizShader.FindKernel("InitDepth");
-                hizShader.SetTexture(initKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
-                hizShader.SetTexture(initKernel, "_HiZTexture", hiZRT);
+                hizShader.SetTexture(hizInitKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
+                hizShader.SetTexture(hizInitKernel, "_HiZTexture", hiZRT);
                 hizShader.SetVector("_Size", new Vector2(width, height));
-                cmd.DispatchCompute(hizShader, initKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
+                cmd.DispatchCompute(hizShader, hizInitKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
 
-                int downKernel = hizShader.FindKernel("Downsample");
                 for (int m = 1; m < hiZMipCount; m++)
                 {
                     int w = Mathf.Max(1, width >> m);
                     int h = Mathf.Max(1, height >> m);
                     hizShader.SetInt("_MipLevel", m);
                     hizShader.SetVector("_Size", new Vector2(w, h));
-                    hizShader.SetTexture(downKernel, "_HiZTexture", hiZRT);
-                    cmd.DispatchCompute(hizShader, downKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
+                    hizShader.SetTexture(hizDownKernel, "_HiZTexture", hiZRT);
+                    cmd.DispatchCompute(hizShader, hizDownKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
                 }
 
                 cmd.SetGlobalTexture("_HiZTexture", hiZRT);
