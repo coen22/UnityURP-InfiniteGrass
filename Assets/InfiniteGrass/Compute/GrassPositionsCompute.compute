@@ -73,18 +73,14 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
         //Checking if the grass position is in the density level
         float distanceFromCamera = length(_CameraPosition - positionWS);
-        //Density stays full within '_FullDensityDistance' then smoothly fades to
-        //zero at '_DrawDistance'.
-        float prob = 1;
-        if (distanceFromCamera > _FullDensityDistance)
-        {
-            float t = (distanceFromCamera - _FullDensityDistance) /
-                       max(_DrawDistance - _FullDensityDistance, 0.0001);
-            prob = saturate(1 - t);
-        }
+        //The D value increases every '_FullDensityDistance' from the camera
+        //and is used to probabilistically cull positions farther away.
+        //When D = 1 every cell passes, when D = 2 roughly half pass, etc.
+        uint d = uint(distanceFromCamera / _FullDensityDistance);
+        d = 1 << d; // equivalent to pow(2, d)
 
-        //Generate a random value per cell and check it against the probability
-        bool insideDensityLevel = random(currentIndex.x + currentIndex.y * 7954) < prob;
+        //Generate a random value per cell and test if it is divisible by D
+        bool insideDensityLevel = murmurHash3(currentIndex.x + currentIndex.y * 7954) % d == 0;
 
         if (insideDensityLevel)
         {
