@@ -19,9 +19,6 @@
         _ExpandDistantGrassWidth("Expand Distant Grass Width", Float) = 1
         _ExpandDistantGrassRange("Expand Distant Grass Range", Vector) = (50, 200, 0, 0)
 
-        [Space]
-        _AlphaFadeRange("Alpha Fade Range", Vector) = (200, 300, 0, 0)
-
         [Header(Wind)][Space]
         _WindTexture("Wind Texture", 2D) = "white" {}
         _WindScroll("Wind Scroll", Vector) = (1, 1, 0, 0)
@@ -34,13 +31,11 @@
 
     SubShader
     {
-        Tags { "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "Queue"="Transparent"}
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "Queue"="Geometry"}
 
         Pass
         {
             Cull Back
-            ZWrite Off
-            Blend SrcAlpha OneMinusSrcAlpha
             ZTest Less
             Tags { "LightMode" = "UniversalForward" }
 
@@ -66,7 +61,7 @@
             struct Varyings
             {
                 float4 positionCS  : SV_POSITION;
-                half4 color        : COLOR;
+                half3 color        : COLOR;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -83,8 +78,6 @@
 
                 float _ExpandDistantGrassWidth;
                 float2 _ExpandDistantGrassRange;
-
-                float2 _AlphaFadeRange;
 
                 float4 _WindTexture_ST;
                 float _WindStrength;
@@ -244,16 +237,14 @@
                 //The main use of the color map for me is burning the grass and the burned grass should not receive specular light
                 
                 float fogFactor = ComputeFogFactor(OUT.positionCS.z);
-                float alpha = saturate(Remap(distanceFromCamera, float2(_AlphaFadeRange.x, _AlphaFadeRange.y), float2(1, 0)));
                 OUT.color.rgb = MixFog(lighting, fogFactor);
-                OUT.color.a = alpha;
 
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
-                return half4(IN.color.rgb, IN.color.a);
+                return half4(IN.color.rgb,1);
             }
             ENDHLSL
         }
