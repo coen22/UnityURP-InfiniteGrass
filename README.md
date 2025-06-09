@@ -23,8 +23,11 @@ You don't need to have a HeightMap or use the Unity Terrain, you can put grass o
 Also it doesn't require generating a big buffer of positions of the whole world, it generates just the necessary amout of positions around the camera so the Memory isn't a big concern.</br></br>
 ![Image Sequence_002_0000](https://github.com/user-attachments/assets/1ef15340-b6bd-45e2-a17c-22448ebb8732)
 
-### Frustum Culling and Density Decreases over Distance:
-It allows you to draw for far distances with less performance cost.</br></br>
+### Frustum Culling and Smooth Density Falloff:
+Grass density now fades out smoothly from the camera position to the draw
+distance. Each cell uses a stable random threshold so blades disappear only
+once as you move, preventing flickering in the distance and giving a natural
+transition.</br></br>
 ![image](https://github.com/user-attachments/assets/0ae48893-7149-47f1-a846-949183c8e9d9)
 
 ### Dynamic Color Modifier:
