@@ -24,9 +24,10 @@ Also it doesn't require generating a big buffer of positions of the whole world,
 ![Image Sequence_002_0000](https://github.com/user-attachments/assets/1ef15340-b6bd-45e2-a17c-22448ebb8732)
 
 ### Frustum Culling and Smooth Density Falloff:
-Grass density remains full within **_FullDensityDistance** of the camera and
-then smoothly decreases until reaching zero at the draw distance. This results
-in a more natural fade of detail while keeping far areas cheaper to render.</br></br>
+Grass density now fades out smoothly from the camera position to the draw
+distance. Each cell uses a stable random threshold so blades disappear only
+once as you move, preventing flickering in the distance and giving a natural
+transition.</br></br>
 ![image](https://github.com/user-attachments/assets/0ae48893-7149-47f1-a846-949183c8e9d9)
 
 ### Dynamic Color Modifier:
