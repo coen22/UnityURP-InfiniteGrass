@@ -52,11 +52,11 @@ Material:
     - _ExpandDistantGrassWidth: 4
     - _FlatNormal: 0.7
     - _GrassCurving: 0.1
-    - _GrassHeight: 0.7
+    - _GrassHeight: 1.5
     - _GrassHeightRandomness: 0.5
     - _GrassWidth: 0.25
     - _GrassWidthRandomness: 0.25
-    - _MaxSubdivision: 2
+    - _MaxSubdivision: 3
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RandomNormal: 0.2
