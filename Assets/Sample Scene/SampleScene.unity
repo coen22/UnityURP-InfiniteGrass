@@ -93,7 +93,8 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 5eee82b5012f74d22bfdc9ece5d5b247,
+    type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -15321,8 +15322,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   grassMaterial: {fileID: 2100000, guid: 851879c6d723afb4a8aaa2242cee777c, type: 2}
   spacing: 0.1
-  drawDistance: 150
-  fullDensityDistance: 40
+  drawDistance: 200
+  fullDensityDistance: 15
   grassMeshSubdivision: 2
   textureUpdateThreshold: 10
   maxBufferCount: 4
