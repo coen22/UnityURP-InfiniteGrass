@@ -73,18 +73,13 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
         //Checking if the grass position is in the density level
         float distanceFromCamera = length(_CameraPosition - positionWS);
-        //the D value simply increase each "_FullDensityDistance" from the camera
-        //if the distance between the position and the camera is less than the "_FullDensityDistance" : D = 0
-        //if the distance between the position and the camera is greater than the "_FullDensityDistance" but less than 2 * "_FullDensityDistance" : D = 1
-        uint d = uint(floor(distanceFromCamera / _FullDensityDistance));
-        d = 1 << d;//This is just another way of writting d = pow(2, d)
-        
-        //Again like what we did with mask, we calculate a random value, this time not a float but a uint that goes from 0 to the max possible value in the uint
-        //Then we test if the modulo of that random uint with the D value is equal to 0
-        //When D = 1 : every number modulo 1 equal to 0 so the result is always TRUE
-        //When D = 2 : approximatly 50% of the calculated random values gonna fail the test
-        //When D = 4 : approximatly 25% of the calculated random values gonna fail the test
-        bool insideDensityLevel = murmurHash3(currentIndex.x + currentIndex.y * 7954) % d == 0;
+        //Calculate a smooth probability based on distance from camera
+        //Up to '_FullDensityDistance' the probability stays at 1 and then smoothly decreases
+        //until reaching 0 at '_DrawDistance'
+        float prob = saturate(1 - (distanceFromCamera - _FullDensityDistance) / (_DrawDistance - _FullDensityDistance));
+
+        //Generate a random value per cell and check it against the probability
+        bool insideDensityLevel = random(currentIndex.x + currentIndex.y * 7954) < prob;
 
         if (insideDensityLevel)
         {
