@@ -77,12 +77,14 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         float distanceFromCamera = length(_CameraPosition - positionWS);
 
         // 1 at the camera and 0 at the draw distance
-        float densityFactor = saturate(1.0 - distanceFromCamera / _DrawDistance);
+    	float falloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
+    	falloff = falloff * falloff;
+    	falloff = falloff * falloff;
+        float densityFactor = falloff * _FullDensityDistance;
 
         // Stable random value based on cell coordinates
         float randVal = random(currentIndex.x + currentIndex.y * 7954);
         bool insideDensityLevel = randVal <= densityFactor;
-        bool insideDensityLevel = murmurHash3(currentIndex.x + currentIndex.y * 7954) % d == 0;
 
         if (insideDensityLevel)
         {

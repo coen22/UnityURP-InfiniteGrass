@@ -15322,8 +15322,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   grassMaterial: {fileID: 2100000, guid: 851879c6d723afb4a8aaa2242cee777c, type: 2}
   spacing: 0.1
-  drawDistance: 200
-  fullDensityDistance: 15
+  drawDistance: 250
+  fullDensityDistance: 0.8
   grassMeshSubdivision: 2
   textureUpdateThreshold: 10
   maxBufferCount: 4
