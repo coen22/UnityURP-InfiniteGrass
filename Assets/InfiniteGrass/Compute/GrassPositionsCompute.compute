@@ -21,7 +21,7 @@ Texture2D<float2> _GrassHeightMapRT;
 Texture2D<float> _GrassMaskMapRT;
 //--------------------------------------------------
 
-AppendStructuredBuffer<float3> _GrassPositions;
+AppendStructuredBuffer<float4> _GrassPositions;
 
 uint murmurHash3(int input) {
 	uint h = abs(input);
@@ -94,7 +94,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _DrawDistance)
             {
                 //Finally after succeeding all the tests our little position is appended to the buffer
-                _GrassPositions.Append(positionWS);
+                _GrassPositions.Append(float4(positionWS, distanceFromCamera));
             }
         }
     }
