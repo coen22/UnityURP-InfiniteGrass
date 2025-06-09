@@ -15325,7 +15325,7 @@ MonoBehaviour:
   drawDistance: 250
   fullDensityDistance: 0.5
   densityFalloffExponent: 4
-  grassMeshSubdivision: 3
+  grassMeshSubdivision: 5
   textureUpdateThreshold: 10
   maxBufferCount: 4
   previewVisibleGrassCount: 0
