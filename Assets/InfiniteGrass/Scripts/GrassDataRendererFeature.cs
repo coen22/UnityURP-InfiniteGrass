@@ -76,14 +76,26 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 int width = renderingData.cameraData.camera.pixelWidth;
                 int height = renderingData.cameraData.camera.pixelHeight;
-                RenderTextureDescriptor hizDesc = new RenderTextureDescriptor(width, height, RenderTextureFormat.RFloat, 0);
-                hizDesc.useMipMap = true;
-                hizDesc.autoGenerateMips = false;
-                hizDesc.enableRandomWrite = true;
+                RenderTextureDescriptor hizDesc = new RenderTextureDescriptor(width, height, RenderTextureFormat.RFloat, 0)
+                {
+                    useMipMap = true,
+                    autoGenerateMips = false,
+                    enableRandomWrite = true
+                };
                 RenderingUtils.ReAllocateIfNeeded(ref hiZRT, hizDesc, FilterMode.Point);
                 hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
                 hizInitKernel = hizShader.FindKernel("InitDepth");
                 hizDownKernel = hizShader.FindKernel("Downsample");
+
+                if (hizInitKernel < 0 || hizDownKernel < 0)
+                {
+                    Debug.LogWarning("Hi-Z compute shader kernels not found");
+                    hiZRT?.Release();
+                    hiZRT = null;
+                    hiZMipCount = 0;
+                    hizInitKernel = -1;
+                    hizDownKernel = -1;
+                }
             }
             else
             {
@@ -201,7 +213,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 hizShader.SetTexture(hizInitKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
                 hizShader.SetTexture(hizInitKernel, "_HiZTexture", hiZRT);
-                hizShader.SetVector("_Size", new Vector2(width, height));
+                hizShader.SetInts("_Size", width, height);
                 cmd.DispatchCompute(hizShader, hizInitKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
 
                 for (int m = 1; m < hiZMipCount; m++)
@@ -209,7 +221,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     int w = Mathf.Max(1, width >> m);
                     int h = Mathf.Max(1, height >> m);
                     hizShader.SetInt("_MipLevel", m);
-                    hizShader.SetVector("_Size", new Vector2(w, h));
+                    hizShader.SetInts("_Size", w, h);
                     hizShader.SetTexture(hizDownKernel, "_HiZTexture", hiZRT);
                     cmd.DispatchCompute(hizShader, hizDownKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
                 }
