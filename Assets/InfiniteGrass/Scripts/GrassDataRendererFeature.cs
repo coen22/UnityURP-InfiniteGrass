@@ -246,16 +246,21 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             builder.AllowGlobalStateModification(true);
 
             TextureHandle height = renderGraph.ImportTexture(heightRT);
-            TextureHandle depth = renderGraph.ImportTexture(heightDepthRT);
-            TextureHandle mask = renderGraph.ImportTexture(maskRT);
-            TextureHandle color = renderGraph.ImportTexture(colorRT);
-            TextureHandle slope = renderGraph.ImportTexture(slopeRT);
+            TextureHandle depth  = renderGraph.ImportTexture(heightDepthRT);
+            TextureHandle mask   = renderGraph.ImportTexture(maskRT);
+            TextureHandle color  = renderGraph.ImportTexture(colorRT);
+            TextureHandle slope  = renderGraph.ImportTexture(slopeRT);
 
-            builder.UseTexture(height); // write height map
+            // Declare textures so RenderGraph keeps them alive during the pass
+            builder.UseTexture(height);
             builder.UseTexture(depth);
             builder.UseTexture(mask);
             builder.UseTexture(color);
             builder.UseTexture(slope);
+
+            // Expose the results as global textures for subsequent passes
+            builder.SetGlobalTexture(GrassColorId, color);
+            builder.SetGlobalTexture(GrassSlopeId, slope);
 
             builder.SetRenderFunc(static (PassData data, RasterGraphContext ctx) =>
             {
