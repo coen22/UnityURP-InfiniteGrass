@@ -16,7 +16,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
     public override void Create()
     {
         grassDataPass = new GrassDataPass(heightMapLayer, heightMapMat, computeShader, hizShader);
-        grassDataPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
+        grassDataPass.renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
     }
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)

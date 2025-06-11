@@ -99,16 +99,17 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _DrawDistance)
             {
                 bool occluded = false;
-                float2 hizUV = clipPos.xy / clipPos.w * 0.5 + 0.5;
+                float depth = clipPos.z / clipPos.w;
+                float2 hizUV = saturate(clipPos.xy / clipPos.w * 0.5 + 0.5);
 
-                int2 texel = int2(hizUV * _HiZSize);
+                int2 texel = int2(hizUV * (_HiZSize - 1));
                 for (int i = 0; i < _HiZMipCount; i++)
                 {
                     float d = _HiZTexture.Load(int3(texel, i));
 #if defined(UNITY_REVERSED_Z)
-                    if (clipPos.z / clipPos.w >= d - 1e-4)
+                    if (depth >= d - 1e-4)
 #else
-                    if (clipPos.z / clipPos.w <= d + 1e-4)
+                    if (depth <= d + 1e-4)
 #endif
                     {
                         occluded = false;
