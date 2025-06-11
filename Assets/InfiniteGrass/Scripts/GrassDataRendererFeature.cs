@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.RendererUtils;
 
 public class GrassDataRendererFeature : ScriptableRendererFeature
 {
@@ -60,14 +61,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             int textureSize = 2048;
-            RenderingUtils.ReAllocateIfNeeded(ref heightRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RGFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateIfNeeded(ref heightDepthRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 32), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            
-            ConfigureTarget(heightRT, heightDepthRT);
-            ConfigureClear(ClearFlag.All, Color.black);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RGFloat, 0), FilterMode.Bilinear);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightDepthRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 32), FilterMode.Bilinear);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
         }
 
         ComputeBuffer grassPositionsBuffer;
@@ -107,6 +105,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Height Map RT")))
             {
+                cmd.SetRenderTarget(heightRT, heightDepthRT);
+                cmd.ClearRenderTarget(true, true, Color.black);
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
@@ -115,7 +115,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 heightMapMat.SetVector("_BoundsYMinMax", new Vector2(cameraBounds.min.y, cameraBounds.max.y));
                 drawSetting.overrideMaterial = heightMapMat;
                 var filterSetting = new FilteringSettings(RenderQueueRange.all, heightMapLayer);
-                context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
+                var rlParams = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rl = context.CreateRendererList(ref rlParams);
+                cmd.DrawRendererList(rl);
             }
 
             cmd.SetRenderTarget(maskRT);//Change the texture we are drawing to
@@ -125,10 +127,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
-                 
+
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
-                context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
+                var rlParams = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rl = context.CreateRendererList(ref rlParams);
+                cmd.DrawRendererList(rl);
             }
 
             cmd.SetRenderTarget(colorRT);
@@ -141,7 +145,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
-                context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
+                var rlParams = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rl = context.CreateRendererList(ref rlParams);
+                cmd.DrawRendererList(rl);
             }
 
             cmd.SetRenderTarget(slopeRT);
@@ -154,7 +160,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
-                context.DrawRenderers(renderingData.cullResults, ref drawSetting, ref filterSetting);
+                var rlParams = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rl = context.CreateRendererList(ref rlParams);
+                cmd.DrawRendererList(rl);
             }
 
             cmd.SetGlobalTexture("_GrassColorRT", colorRT);//Set the COLOR and SLOPE textures as global
