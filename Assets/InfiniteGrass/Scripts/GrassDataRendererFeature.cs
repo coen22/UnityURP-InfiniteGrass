@@ -61,11 +61,14 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             int textureSize = 2048;
-            RenderingUtils.ReAllocateHandleIfNeeded(ref heightRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RGFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref heightDepthRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 32), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
+            var heightDesc = new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RGFloat, 0);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightRT, heightDesc, FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassHeightRT");
+            // Allocate a dedicated depth texture instead of using a color format
+            var depthDesc = new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.Depth, 32);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightDepthRT, depthDesc, FilterMode.Bilinear);
+            RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassMaskRT");
+            RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassColorRT");
+            RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassSlopeRT");
         }
 
         ComputeBuffer grassPositionsBuffer;
