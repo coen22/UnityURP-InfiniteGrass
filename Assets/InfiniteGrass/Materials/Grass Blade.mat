@@ -57,10 +57,12 @@ Material:
     - _GrassWidth: 0.25
     - _GrassWidthRandomness: 0.25
     - _MaxSubdivision: 5
-    - _SubdivisionDistance: 100
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RandomNormal: 0.229
+    - _SubdivisionBumpWidth: 25
+    - _SubdivisionDistance: 50
+    - _SubdivisionHeightBoost: 3
     - _WindAFrequency: 4
     - _WindAIntensity: 1.77
     - _WindBFrequency: 7.7
