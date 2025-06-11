@@ -3,6 +3,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.RendererUtils;
 using UnityEngine.Rendering.Universal;
 
 public class GrassDataRendererFeature : ScriptableRendererFeature
@@ -42,6 +44,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
+        _grassDataPass.Setup(ref renderingData);
         renderer.EnqueuePass(_grassDataPass);
     }
 
@@ -79,8 +82,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _shaderTagsList.Add(new ShaderTagId("UniversalForwardOnly"));
         }
 
-        [System.Obsolete]
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        // Allocate render textures used during the pass
+        public void SetupTextures()
         {
             const int textureSize = 2048;
 
@@ -114,15 +117,27 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
             };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
-            
-            ConfigureTarget(_heightRT, _heightDepthRT);
-            ConfigureClear(ClearFlag.All, Color.black);
+        }
+
+        public void Setup(ref RenderingData renderingData)
+        {
+            _storedRenderingData = renderingData;
+            SetupTextures();
         }
 
         private ComputeBuffer _grassPositionsBuffer;
+        private RenderingData _storedRenderingData;
 
-        [System.Obsolete]
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        private struct PassData
+        {
+            public RendererListHandle heightList;
+            public RendererListHandle maskList;
+            public RendererListHandle colorList;
+            public RendererListHandle slopeList;
+        }
+
+        // Main execution logic used by the Render Graph pass
+        void ExecutePass(CommandBuffer cmd, PassData passData, ref RenderingData renderingData)
         {
             //Now to render the textures we need we have two ways :
             //- Having a second camera in our scene that is looking from above and renders the necessary data (which is expensive)
@@ -133,7 +148,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             if (!InfiniteGrassRenderer.instance || !_heightMapMat || !_computeShader)
                 return;
 
-            CommandBuffer cmd = CommandBufferPool.Get();
 
             float spacing = InfiniteGrassRenderer.instance.spacing;
             float fullDensityDistance = InfiniteGrassRenderer.instance.fullDensityDistance;
@@ -163,8 +177,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Height Map RT")))
             {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 //Replace the material of the objects with the "heightMapLayer" and render them
                 var drawSetting = CreateDrawingSettings(_shaderTagsList, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
@@ -172,9 +184,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 drawSetting.overrideMaterial = _heightMapMat;
                 var filterSetting = new FilteringSettings(RenderQueueRange.all, _heightMapLayer);
 
-                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(ref rendererListDesc);
-                cmd.DrawRendererList(rendererList);
+                cmd.DrawRendererList(passData.heightList);
             }
 
             cmd.SetRenderTarget(_maskRT);//Change the texture we are drawing to
@@ -182,15 +192,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Mask RT")))
             {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
                  
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
-                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(ref rendererListDesc);
-                cmd.DrawRendererList(rendererList);
+                cmd.DrawRendererList(passData.maskList);
             }
 
             cmd.SetRenderTarget(_colorRT);
@@ -198,15 +204,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Color RT")))
             {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
-                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(ref rendererListDesc);
-                cmd.DrawRendererList(rendererList);
+                cmd.DrawRendererList(passData.colorList);
             }
 
             cmd.SetRenderTarget(_slopeRT);
@@ -214,15 +216,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Slope RT")))
             {
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
-                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(ref rendererListDesc);
-                cmd.DrawRendererList(rendererList);
+                cmd.DrawRendererList(passData.slopeList);
             }
 
             cmd.SetGlobalTexture(GrassColorRT, _colorRT);//Set the COLOR and SLOPE textures as global
@@ -230,8 +228,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             //Finally we reset the camera matricies to the original ones
             cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
 
             //After finishing rendering the textures
             //We compute the grass positions buffer
@@ -272,10 +268,35 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 cmd.CopyCounterValue(_grassPositionsBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
             }
 
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
+            // no additional cleanup required
+        }
 
-            CommandBufferPool.Release(cmd);
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        {
+            using (var builder = renderGraph.AddUnsafePass<PassData>("Grass Data Pass", out var passData))
+            {
+                passData.heightList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                    CreateDrawingSettings(_shaderTagsList, ref _storedRenderingData, _storedRenderingData.cameraData.defaultOpaqueSortFlags),
+                    new FilteringSettings(RenderQueueRange.all, _heightMapLayer)));
+
+                passData.maskList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                    CreateDrawingSettings(new ShaderTagId("GrassMask"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                    new FilteringSettings(RenderQueueRange.all)));
+
+                passData.colorList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                    CreateDrawingSettings(new ShaderTagId("GrassColor"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                    new FilteringSettings(RenderQueueRange.all)));
+
+                passData.slopeList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                    CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                    new FilteringSettings(RenderQueueRange.all)));
+
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
+                {
+                    ExecutePass(ctx.cmd, data, ref _storedRenderingData);
+                });
+            }
         }
 
 
