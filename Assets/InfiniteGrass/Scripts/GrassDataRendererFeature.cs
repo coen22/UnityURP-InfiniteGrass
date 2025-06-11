@@ -43,6 +43,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private RTHandle slopeRT;
         private RTHandle hiZRT;
         private int hiZMipCount;
+        private Vector2Int hiZSize;
         private int hizInitKernel = -1;
         private int hizDownKernel = -1;
 
@@ -76,6 +77,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 int width = renderingData.cameraData.camera.pixelWidth;
                 int height = renderingData.cameraData.camera.pixelHeight;
+                hiZSize = new Vector2Int(width, height);
                 hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
                 RenderTextureDescriptor hizDesc = new RenderTextureDescriptor(width, height, RenderTextureFormat.RFloat, 0)
                 {
@@ -93,6 +95,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     Debug.LogWarning("Hi-Z compute shader kernels not found");
                     hiZRT?.Release();
                     hiZRT = CreateFallbackHiZ();
+                    hiZSize = new Vector2Int(1, 1);
                     hiZMipCount = 0;
                     hizInitKernel = -1;
                     hizDownKernel = -1;
@@ -103,6 +106,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 hiZMipCount = 0;
                 hiZRT?.Release();
                 hiZRT = CreateFallbackHiZ();
+                hiZSize = new Vector2Int(1, 1);
                 hizInitKernel = -1;
                 hizDownKernel = -1;
             }
@@ -229,10 +233,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 cmd.SetGlobalTexture("_HiZTexture", hiZRT);
                 cmd.SetGlobalInt("_HiZMipCount", hiZMipCount);
+                cmd.SetGlobalVector("_HiZSize", new Vector4(hiZSize.x, hiZSize.y, 0, 0));
             }
             else
             {
                 cmd.SetGlobalInt("_HiZMipCount", 0);
+                cmd.SetGlobalVector("_HiZSize", new Vector4(1, 1, 0, 0));
             }
 
             //After finishing rendering the textures
@@ -262,6 +268,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 cmd.SetComputeTextureParam(computeShader, 0, "_HiZTexture", hiZRT);
             }
+            cmd.SetComputeIntParams(computeShader, "_HiZSize", new int[] { hiZSize.x, hiZSize.y });
             cmd.SetComputeIntParam(computeShader, "_HiZMipCount", hiZMipCount);
 
             grassPositionsBuffer.SetCounterValue(0);
