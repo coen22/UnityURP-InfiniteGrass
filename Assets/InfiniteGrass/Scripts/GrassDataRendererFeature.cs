@@ -134,6 +134,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public RendererListHandle maskList;
             public RendererListHandle colorList;
             public RendererListHandle slopeList;
+
+            public TextureHandle heightTex;
+            public TextureHandle maskTex;
+            public TextureHandle colorTex;
+            public TextureHandle slopeTex;
         }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -415,7 +420,22 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            using var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData);
+            using (var builder = renderGraph.AddRasterRenderPass<PassData>("Grass Data Pass", out var passData))
+                passData.heightTex = renderGraph.ImportTexture(_heightRT);
+                passData.maskTex = renderGraph.ImportTexture(_maskRT);
+                passData.colorTex = renderGraph.ImportTexture(_colorRT);
+                passData.slopeTex = renderGraph.ImportTexture(_slopeRT);
+
+                builder.UseRendererList(passData.heightList);
+                builder.UseRendererList(passData.maskList);
+                builder.UseRendererList(passData.colorList);
+                builder.UseRendererList(passData.slopeList);
+
+                builder.WriteTexture(passData.heightTex);
+                builder.WriteTexture(passData.maskTex);
+                builder.WriteTexture(passData.colorTex);
+                builder.WriteTexture(passData.slopeTex);
+
             
             passData.heightList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
                 CreateDrawingSettings(_shaderTagsList, ref _storedRenderingData, _storedRenderingData.cameraData.defaultOpaqueSortFlags),
