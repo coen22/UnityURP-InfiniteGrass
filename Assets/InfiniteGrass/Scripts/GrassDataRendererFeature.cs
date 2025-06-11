@@ -79,6 +79,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _shaderTagsList.Add(new ShaderTagId("UniversalForwardOnly"));
         }
 
+        [System.Obsolete]
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             const int textureSize = 2048;
@@ -120,6 +121,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         private ComputeBuffer _grassPositionsBuffer;
 
+        [System.Obsolete]
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             //Now to render the textures we need we have two ways :
