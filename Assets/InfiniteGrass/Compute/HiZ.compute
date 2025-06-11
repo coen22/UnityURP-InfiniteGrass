@@ -24,6 +24,6 @@ void Downsample(uint3 id : SV_DispatchThreadID)
     float d1 = _HiZTexture.Load(int3(src + int2(1,0), _MipLevel-1));
     float d2 = _HiZTexture.Load(int3(src + int2(0,1), _MipLevel-1));
     float d3 = _HiZTexture.Load(int3(src + int2(1,1), _MipLevel-1));
-    float m = max(max(d0, d1), max(d2, d3));
+    float m = min(min(d0, d1), min(d2, d3));
     _HiZTexture[id.xy] = m;
 }

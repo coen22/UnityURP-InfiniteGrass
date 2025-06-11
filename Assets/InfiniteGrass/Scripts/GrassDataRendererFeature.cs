@@ -76,14 +76,15 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 int width = renderingData.cameraData.camera.pixelWidth;
                 int height = renderingData.cameraData.camera.pixelHeight;
+                hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
                 RenderTextureDescriptor hizDesc = new RenderTextureDescriptor(width, height, RenderTextureFormat.RFloat, 0)
                 {
                     useMipMap = true,
                     autoGenerateMips = false,
-                    enableRandomWrite = true
+                    enableRandomWrite = true,
+                    mipCount = hiZMipCount
                 };
                 RenderingUtils.ReAllocateIfNeeded(ref hiZRT, hizDesc, FilterMode.Point);
-                hiZMipCount = (int)Mathf.Log(Mathf.Max(width, height), 2) + 1;
                 hizInitKernel = hizShader.FindKernel("InitDepth");
                 hizDownKernel = hizShader.FindKernel("Downsample");
 
