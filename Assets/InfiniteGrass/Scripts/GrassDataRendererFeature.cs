@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering.RendererUtils;
+using UnityEngine.Rendering.RenderGraphModule;
 
 public class GrassDataRendererFeature : ScriptableRendererFeature
 {
@@ -58,6 +59,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             shaderTagsList.Add(new ShaderTagId("UniversalForwardOnly"));
         }
 
+        [System.Obsolete("Use OnSetup with Render Graph API", false)]
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             int textureSize = 2048;
@@ -73,6 +75,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         ComputeBuffer grassPositionsBuffer;
 
+        [System.Obsolete("Use RecordRenderGraph with Render Graph API", false)]
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             //Now to render the textures we need we have two ways :
@@ -219,6 +222,15 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             cmd.Clear();
 
             CommandBufferPool.Release(cmd);
+        }
+
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        {
+            ref RenderingData rd = ref frameData.Get<RenderingData>();
+            renderGraph.AddRenderPass("Grass Data Pass", (RenderGraphContext ctx) =>
+            {
+                Execute(ctx.renderContext, ref rd);
+            });
         }
 
 
