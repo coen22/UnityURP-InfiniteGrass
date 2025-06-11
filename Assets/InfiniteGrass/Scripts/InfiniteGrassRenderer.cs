@@ -21,6 +21,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
     public float fullDensityDistance = 30;//Distance around the camera kept at full density
     [Tooltip("Controls how quickly grass fades with distance (higher is steeper)")]
     public float densityFalloffExponent = 4f;
+    [Tooltip("Extra height applied near the Subdivision Distance")] public float subdivisionHeightBoost = 0f;
     public int grassMeshSubdivision = 5;//How many sections you will have in your grass blade mesh, 0 will give a triangle, having more sections will make the wind animation and the curvature looks better
     public float textureUpdateThreshold = 10.0f;//The distance that the camera should move before we update the "Data Textures"
 
@@ -73,6 +74,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
         grassMaterial.SetVector("_CenterPos", centerPos);
         grassMaterial.SetFloat("_DrawDistance", drawDistance);
         grassMaterial.SetFloat("_SubdivisionDistance", subdivisionDistance);
+        grassMaterial.SetFloat("_SubdivisionHeightBoost", subdivisionHeightBoost);
         grassMaterial.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
         grassMaterial.SetFloat("_MaxSubdivision", grassMeshSubdivision);
 
