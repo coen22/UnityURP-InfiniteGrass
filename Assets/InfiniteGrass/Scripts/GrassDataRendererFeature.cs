@@ -228,12 +228,22 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             CommandBufferPool.Release(cmd);
         }
 
+        class PassData
+        {
+            internal GrassDataPass pass;
+        }
+
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            renderGraph.AddRenderPass("Grass Data Pass", (RenderGraphContext ctx) =>
+            using (var builder = renderGraph.AddRasterRenderPass<PassData>("Grass Data Pass", out var passData))
             {
-                Execute(ctx.renderContext, ref cachedRenderingData);
-            });
+                passData.pass = this;
+                builder.AllowGlobalStateModification(true);
+                builder.SetRenderFunc(static (PassData data, RasterGraphContext ctx) =>
+                {
+                    data.pass.Execute(ctx.renderContext, ref data.pass.cachedRenderingData);
+                });
+            }
         }
 
 
