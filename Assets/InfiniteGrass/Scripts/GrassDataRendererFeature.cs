@@ -128,7 +128,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private ComputeBuffer _grassPositionsBuffer;
         private RenderingData _storedRenderingData;
 
-        private struct PassData
+        private class PassData
         {
             public RendererListHandle heightList;
             public RendererListHandle maskList;
@@ -273,30 +273,29 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            using (var builder = renderGraph.AddUnsafePass<PassData>("Grass Data Pass", out var passData))
+            using var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData);
+            
+            passData.heightList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                CreateDrawingSettings(_shaderTagsList, ref _storedRenderingData, _storedRenderingData.cameraData.defaultOpaqueSortFlags),
+                new FilteringSettings(RenderQueueRange.all, _heightMapLayer)));
+
+            passData.maskList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                CreateDrawingSettings(new ShaderTagId("GrassMask"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                new FilteringSettings(RenderQueueRange.all)));
+
+            passData.colorList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                CreateDrawingSettings(new ShaderTagId("GrassColor"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                new FilteringSettings(RenderQueueRange.all)));
+
+            passData.slopeList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
+                CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
+                new FilteringSettings(RenderQueueRange.all)));
+
+            builder.AllowPassCulling(false);
+            builder.SetRenderFunc<PassData>((data, ctx) =>
             {
-                passData.heightList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
-                    CreateDrawingSettings(_shaderTagsList, ref _storedRenderingData, _storedRenderingData.cameraData.defaultOpaqueSortFlags),
-                    new FilteringSettings(RenderQueueRange.all, _heightMapLayer)));
-
-                passData.maskList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
-                    CreateDrawingSettings(new ShaderTagId("GrassMask"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
-                    new FilteringSettings(RenderQueueRange.all)));
-
-                passData.colorList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
-                    CreateDrawingSettings(new ShaderTagId("GrassColor"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
-                    new FilteringSettings(RenderQueueRange.all)));
-
-                passData.slopeList = renderGraph.CreateRendererList(new RendererListParams(_storedRenderingData.cullResults,
-                    CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref _storedRenderingData, SortingCriteria.CommonTransparent),
-                    new FilteringSettings(RenderQueueRange.all)));
-
-                builder.AllowPassCulling(false);
-                builder.SetRenderFunc<PassData>((data, ctx) =>
-                {
-                    ExecutePass(ctx.cmd, data, ref _storedRenderingData);
-                });
-            }
+                ExecutePass(ctx.cmd, data, ref _storedRenderingData);
+            });
         }
 
 
@@ -342,7 +341,5 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _grassPositionsBuffer?.Release();
         }
     }
-
 }
-
 
