@@ -28,6 +28,8 @@
         _RandomNormal("Random Normal", Range(0, 1)) = 0.1
         _MaxSubdivision("Max Subdivision", Float) = 5
         _SubdivisionDistance("Subdivision Distance", Float) = 100
+        _SubdivisionHeightBoost("Subdivision Height Boost", Float) = 0
+        _SubdivisionBumpWidth("Subdivision Bump Width", Float) = 20
     }
 
     SubShader
@@ -92,6 +94,8 @@
                 float _TextureUpdateThreshold;
                 float _MaxSubdivision;
                 float _SubdivisionDistance;
+                float _SubdivisionHeightBoost;
+                float _SubdivisionBumpWidth;
 
                 StructuredBuffer<float4> _GrassPositions;
 
@@ -187,6 +191,9 @@
 
                 //Grass Height
                 float grassHeight = _GrassHeight * (1 - random(pivot.x * 230 + pivot.z * 10) * _GrassHeightRandomness);
+                float diff = abs(distanceFromCamera - _SubdivisionDistance);
+                float bumpFactor = saturate(1 - diff / _SubdivisionBumpWidth);
+                grassHeight *= (1 + _SubdivisionHeightBoost * bumpFactor);
                 
                 //Billboard Logic
                 float3 cameraTransformRightWS = UNITY_MATRIX_V[0].xyz;
