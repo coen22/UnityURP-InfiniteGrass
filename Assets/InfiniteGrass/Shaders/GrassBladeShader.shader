@@ -27,6 +27,7 @@
         [Header(Lighting)][Space]
         _RandomNormal("Random Normal", Range(0, 1)) = 0.1
         _MaxSubdivision("Max Subdivision", Float) = 5
+        _SubdivisionDistance("Subdivision Distance", Float) = 100
     }
 
     SubShader
@@ -90,6 +91,7 @@
                 float _DrawDistance;
                 float _TextureUpdateThreshold;
                 float _MaxSubdivision;
+                float _SubdivisionDistance;
 
                 StructuredBuffer<float4> _GrassPositions;
 
@@ -172,7 +174,7 @@
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
 
-                float lodSubdiv = floor(_MaxSubdivision * saturate(1 - distanceFromCamera / _DrawDistance));
+                float lodSubdiv = floor(_MaxSubdivision * saturate(1 - distanceFromCamera / _SubdivisionDistance));
                 float step = 1.0 / (lodSubdiv + 1);
                 float quantizedY = round(IN.positionOS.y / step) * step;
 

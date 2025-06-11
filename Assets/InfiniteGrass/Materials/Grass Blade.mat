@@ -57,6 +57,7 @@ Material:
     - _GrassWidth: 0.25
     - _GrassWidthRandomness: 0.25
     - _MaxSubdivision: 5
+    - _SubdivisionDistance: 100
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RandomNormal: 0.229

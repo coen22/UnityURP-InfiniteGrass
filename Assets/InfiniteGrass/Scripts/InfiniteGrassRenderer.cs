@@ -17,6 +17,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
     [Header("Grass Properties")]
     public float spacing = 0.5f;//Spacing between blades, Please don't make it too low
     public float drawDistance = 300;
+    public float subdivisionDistance = 100;//Distance where grass mesh subdivisions fade out
     public float fullDensityDistance = 30;//Distance around the camera kept at full density
     [Tooltip("Controls how quickly grass fades with distance (higher is steeper)")]
     public float densityFalloffExponent = 4f;
@@ -71,6 +72,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
         //Material Setup ------------------------------------------------------------
         grassMaterial.SetVector("_CenterPos", centerPos);
         grassMaterial.SetFloat("_DrawDistance", drawDistance);
+        grassMaterial.SetFloat("_SubdivisionDistance", subdivisionDistance);
         grassMaterial.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
         grassMaterial.SetFloat("_MaxSubdivision", grassMeshSubdivision);
 
