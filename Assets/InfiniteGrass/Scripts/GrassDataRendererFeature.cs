@@ -238,7 +238,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             using (var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
             {
                 passData.pass = this;
-                builder.AllowGlobalStateModification(true);
                 builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
                 {
                     data.pass.Execute(ctx.renderContext, ref data.pass.cachedRenderingData);
