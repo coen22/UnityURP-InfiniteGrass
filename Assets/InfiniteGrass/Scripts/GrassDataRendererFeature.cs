@@ -48,6 +48,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         private ComputeShader computeShader;
 
+        static readonly int GrassColorId = Shader.PropertyToID("_GrassColorRT");
+        static readonly int GrassSlopeId = Shader.PropertyToID("_GrassSlopeRT");
+
         RenderingData cachedRenderingData;
 
         public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
@@ -238,10 +241,26 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            using (var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
+            using (var builder = renderGraph.AddRasterRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
             {
                 passData.pass = this;
-                builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
+                builder.UseAllGlobalTextures(true);
+
+                var heightHandle = renderGraph.ImportTexture(heightRT);
+                var depthHandle = renderGraph.ImportTexture(heightDepthRT);
+                var maskHandle = renderGraph.ImportTexture(maskRT);
+                var colorHandle = renderGraph.ImportTexture(colorRT);
+                var slopeHandle = renderGraph.ImportTexture(slopeRT);
+
+                builder.UseTexture(heightHandle, AccessFlags.ReadWrite);
+                builder.UseTexture(depthHandle, AccessFlags.ReadWrite);
+                builder.UseTexture(maskHandle, AccessFlags.ReadWrite);
+                builder.UseTexture(colorHandle, AccessFlags.ReadWrite);
+                builder.UseTexture(slopeHandle, AccessFlags.ReadWrite);
+                builder.SetGlobalTextureAfterPass(colorHandle, GrassColorId);
+                builder.SetGlobalTextureAfterPass(slopeHandle, GrassSlopeId);
+
+                builder.SetRenderFunc(static (PassData data, RasterGraphContext ctx) =>
                 {
                     data.pass.RenderPass(ctx.cmd, ctx.renderContext, ref data.pass.cachedRenderingData);
                 });
