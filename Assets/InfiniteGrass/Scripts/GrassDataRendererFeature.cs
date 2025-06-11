@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RendererUtils;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering.Universal;
 
 public class GrassDataRendererFeature : ScriptableRendererFeature
@@ -61,11 +62,37 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             int textureSize = 2048;
-            RenderingUtils.ReAllocateHandleIfNeeded(ref heightRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RGFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref heightDepthRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 32), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
-            RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear);
+
+            var heightDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightRT, heightDesc, FilterMode.Bilinear);
+
+            var depthDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.None,
+                depthStencilFormat = GraphicsFormat.D32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref heightDepthRT, depthDesc, FilterMode.Bilinear);
+
+            var maskDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, maskDesc, FilterMode.Bilinear);
+
+            var colorDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, colorDesc, FilterMode.Bilinear);
+
+            var slopeDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, slopeDesc, FilterMode.Bilinear);
             
             ConfigureTarget(heightRT, heightDepthRT);
             ConfigureClear(ClearFlag.All, Color.black);
@@ -118,7 +145,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 var filterSetting = new FilteringSettings(RenderQueueRange.all, heightMapLayer);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -134,7 +161,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -150,7 +177,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -166,7 +193,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.CreateRendererList(rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
