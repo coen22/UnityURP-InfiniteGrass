@@ -11,8 +11,8 @@ int2 _Size;
 void InitDepth(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= _Size.x || id.y >= _Size.y) return;
-    float d = _CameraDepthTexture.Load(int3(id.xy,0));
-    _HiZTexture.Write(d, int3(id.xy,0));
+    float d = _CameraDepthTexture.Load(int3(id.xy, 0));
+    _HiZTexture.Write(d, id.xy, 0);
 }
 
 [numthreads(8,8,1)]
@@ -24,6 +24,6 @@ void Downsample(uint3 id : SV_DispatchThreadID)
     float d1 = _HiZTexture.Load(int3(src + int2(1,0), _MipLevel-1));
     float d2 = _HiZTexture.Load(int3(src + int2(0,1), _MipLevel-1));
     float d3 = _HiZTexture.Load(int3(src + int2(1,1), _MipLevel-1));
-    float m = max(max(d0,d1), max(d2,d3));
-    _HiZTexture.Write(m, int3(id.xy, _MipLevel));
+    float m = max(max(d0, d1), max(d2, d3));
+    _HiZTexture.Write(m, id.xy, _MipLevel);
 }
