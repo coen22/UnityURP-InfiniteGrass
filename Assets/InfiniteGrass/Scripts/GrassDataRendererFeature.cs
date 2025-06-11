@@ -292,7 +292,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     new FilteringSettings(RenderQueueRange.all)));
 
                 builder.AllowPassCulling(false);
-                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
+                builder.SetRenderFunc<PassData>((data, ctx) =>
                 {
                     ExecutePass(ctx.cmd, data, ref _storedRenderingData);
                 });
