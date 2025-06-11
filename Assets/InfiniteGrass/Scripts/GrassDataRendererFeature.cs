@@ -241,22 +241,26 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            using (var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
+            using var builder = renderGraph.AddRasterRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass"));
+            passData.pass = this;
+            builder.AllowGlobalStateModification(true);
+
+            TextureHandle height = renderGraph.ImportTexture(heightRT);
+            TextureHandle depth = renderGraph.ImportTexture(heightDepthRT);
+            TextureHandle mask = renderGraph.ImportTexture(maskRT);
+            TextureHandle color = renderGraph.ImportTexture(colorRT);
+            TextureHandle slope = renderGraph.ImportTexture(slopeRT);
+
+            builder.UseTexture(height); // write height map
+            builder.UseTexture(depth);
+            builder.UseTexture(mask);
+            builder.UseTexture(color);
+            builder.UseTexture(slope);
+
+            builder.SetRenderFunc(static (PassData data, RasterGraphContext ctx) =>
             {
-                passData.pass = this;
-
-                renderGraph.ImportTexture(heightRT);
-                renderGraph.ImportTexture(heightDepthRT);
-                renderGraph.ImportTexture(maskRT);
-                renderGraph.ImportTexture(colorRT);
-                renderGraph.ImportTexture(slopeRT);
-
-                builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
-                {
-                    data.pass.RenderPass(ctx.cmd, ctx.renderContext, ref data.pass.cachedRenderingData);
-                });
-            }
-        }
+                data.pass.RenderPass(ctx.cmd, ctx.renderContext, ref data.pass.cachedRenderingData);
+            });
 
 
         Bounds CalculateCameraBounds(Camera camera, float drawDistance)
