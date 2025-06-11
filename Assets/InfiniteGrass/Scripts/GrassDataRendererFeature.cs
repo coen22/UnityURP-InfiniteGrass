@@ -245,19 +245,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 passData.pass = this;
 
-                var heightHandle = renderGraph.ImportTexture(heightRT);
-                var depthHandle = renderGraph.ImportTexture(heightDepthRT);
-                var maskHandle = renderGraph.ImportTexture(maskRT);
-                var colorHandle = renderGraph.ImportTexture(colorRT);
-                var slopeHandle = renderGraph.ImportTexture(slopeRT);
-
-                builder.UseTexture(heightHandle, AccessFlags.ReadWrite);
-                builder.UseTexture(depthHandle, AccessFlags.ReadWrite);
-                builder.UseTexture(maskHandle, AccessFlags.ReadWrite);
-                builder.UseTexture(colorHandle, AccessFlags.ReadWrite);
-                builder.UseTexture(slopeHandle, AccessFlags.ReadWrite);
-                builder.SetGlobalTextureAfterPass(colorHandle, GrassColorId);
-                builder.SetGlobalTextureAfterPass(slopeHandle, GrassSlopeId);
+                renderGraph.ImportTexture(heightRT);
+                renderGraph.ImportTexture(heightDepthRT);
+                renderGraph.ImportTexture(maskRT);
+                renderGraph.ImportTexture(colorRT);
+                renderGraph.ImportTexture(slopeRT);
 
                 builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
                 {
