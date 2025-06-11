@@ -101,11 +101,14 @@ void CSMain(uint3 id : SV_DispatchThreadID)
                 float2 hizUV = clipPos.xy / clipPos.w * 0.5 + 0.5;
 
                 float2 uv = hizUV;
-                for (int i = 0; i < 16; i++)
+                for (int i = 0; i < _HiZMipCount; i++)
                 {
-                    if (i >= _HiZMipCount) break;
                     float d = _HiZTexture.SampleLevel(linearClampSampler, uv, i);
+#if defined(UNITY_REVERSED_Z)
+                    if (clipPos.z / clipPos.w >= d - 1e-4)
+#else
                     if (clipPos.z / clipPos.w <= d + 1e-4)
+#endif
                     {
                         occluded = false;
                         break;
