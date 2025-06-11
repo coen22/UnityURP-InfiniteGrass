@@ -177,7 +177,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         {
             var renderingData = _renderingData;
 
-            CommandBuffer cmd = context.cmd;
+            RasterCommandBuffer cmd = context.cmd;
 
             float spacing = InfiniteGrassRenderer.instance.spacing;
             float fullDensityDistance = InfiniteGrassRenderer.instance.fullDensityDistance;
@@ -203,8 +203,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Height Map RT")))
             {
-                context.renderContext.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(_shaderTagsList, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
                 _heightMapMat.SetVector(BoundsYMinMax, new Vector2(cameraBounds.min.y, cameraBounds.max.y));
@@ -212,7 +210,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 var filterSetting = new FilteringSettings(RenderQueueRange.all, _heightMapLayer);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.renderContext.CreateRendererList(ref rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -221,14 +219,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Mask RT")))
             {
-                context.renderContext.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.renderContext.CreateRendererList(ref rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -237,14 +233,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Color RT")))
             {
-                context.renderContext.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.renderContext.CreateRendererList(ref rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -253,14 +247,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Slope RT")))
             {
-                context.renderContext.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
 
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
-                var rendererList = context.renderContext.CreateRendererList(ref rendererListDesc);
+                var rendererList = context.CreateRendererList(ref rendererListDesc);
                 cmd.DrawRendererList(rendererList);
             }
 
@@ -268,8 +260,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             cmd.SetGlobalTexture(GrassSlopeRT, data.slope);
 
             cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
-            context.renderContext.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
 
             Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(cameraBounds.size.x / spacing), Mathf.CeilToInt(cameraBounds.size.z / spacing));
             Vector2Int gridStartIndex = new Vector2Int(Mathf.FloorToInt(cameraBounds.min.x / spacing), Mathf.FloorToInt(cameraBounds.min.z / spacing));
@@ -305,10 +295,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 cmd.CopyCounterValue(_grassPositionsBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
             }
 
-            context.renderContext.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            CommandBufferPool.Release(cmd);
+            // RasterCommandBuffer from RenderGraph does not require manual execution or release.
         }
 
 
