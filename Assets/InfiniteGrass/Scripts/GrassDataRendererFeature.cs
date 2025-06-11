@@ -244,7 +244,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             using (var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
             {
                 passData.pass = this;
-                builder.UseAllGlobalTextures(true);
 
                 var heightHandle = renderGraph.ImportTexture(heightRT);
                 var depthHandle = renderGraph.ImportTexture(heightDepthRT);
