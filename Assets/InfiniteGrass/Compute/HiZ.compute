@@ -2,7 +2,8 @@
 #pragma kernel Downsample
 
 Texture2D<float> _CameraDepthTexture;
-RWTexture2D<float> _HiZTexture;
+Texture2D<float> _HiZTexture;
+RWTexture2D<float> _HiZWrite;
 
 int _MipLevel;
 int2 _Size;
@@ -12,7 +13,7 @@ void InitDepth(uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= _Size.x || id.y >= _Size.y) return;
     float d = _CameraDepthTexture.Load(int3(id.xy, 0));
-    _HiZTexture.Write(d, id.xy, 0);
+    _HiZWrite[id.xy] = d;
 }
 
 [numthreads(8,8,1)]
@@ -29,5 +30,5 @@ void Downsample(uint3 id : SV_DispatchThreadID)
 #else
     float m = min(min(d0, d1), min(d2, d3));
 #endif
-    _HiZTexture.Write(m, id.xy, _MipLevel);
+    _HiZWrite[id.xy] = m;
 }
