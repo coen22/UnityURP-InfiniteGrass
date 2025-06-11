@@ -3,6 +3,7 @@
 
 Texture2D<float> _CameraDepthTexture;
 Texture2D<float> _HiZTexture;
+// Mip level is bound externally so we simply write using the UAV indexer
 RWTexture2D<float> _HiZWrite;
 
 int _MipLevel;
