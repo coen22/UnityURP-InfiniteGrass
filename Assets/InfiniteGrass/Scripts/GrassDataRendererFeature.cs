@@ -213,15 +213,15 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 cmd.SetComputeTextureParam(hizShader, hizInitKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
                 cmd.SetComputeTextureParam(hizShader, hizInitKernel, "_HiZTexture", hiZRT, 0);
-                hizShader.SetInts("_Size", width, height);
+                cmd.SetComputeIntParams(hizShader, "_Size", new int[] { width, height });
                 cmd.DispatchCompute(hizShader, hizInitKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
 
                 for (int m = 1; m < hiZMipCount; m++)
                 {
                     int w = Mathf.Max(1, width >> m);
                     int h = Mathf.Max(1, height >> m);
-                    hizShader.SetInt("_MipLevel", m);
-                    hizShader.SetInts("_Size", w, h);
+                    cmd.SetComputeIntParam(hizShader, "_MipLevel", m);
+                    cmd.SetComputeIntParams(hizShader, "_Size", new int[] { w, h });
                     cmd.SetComputeTextureParam(hizShader, hizDownKernel, "_HiZTexture", hiZRT, m);
                     cmd.DispatchCompute(hizShader, hizDownKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
                 }
@@ -242,26 +242,26 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             grassPositionsBuffer?.Release();
             grassPositionsBuffer = new ComputeBuffer((int)(1000000 * maxBufferCount), sizeof(float) * 4, ComputeBufferType.Append);
 
-            computeShader.SetMatrix("_VPMatrix", Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
-            computeShader.SetFloat("_FullDensityDistance", fullDensityDistance);
-            computeShader.SetFloat("_DensityFalloffExponent", densityFalloffExponent);
-            computeShader.SetVector("_BoundsMin", cameraBounds.min);
-            computeShader.SetVector("_BoundsMax", cameraBounds.max);
-            computeShader.SetVector("_CameraPosition", Camera.main.transform.position);
-            computeShader.SetVector("_CenterPos", centerPos);
-            computeShader.SetFloat("_DrawDistance", drawDistance);
-            computeShader.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
-            computeShader.SetFloat("_Spacing", spacing);
-            computeShader.SetVector("_GridStartIndex", (Vector2)gridStartIndex);
-            computeShader.SetVector("_GridSize", (Vector2)gridSize);
-            computeShader.SetBuffer(0, "_GrassPositions", grassPositionsBuffer);
-            computeShader.SetTexture(0, "_GrassHeightMapRT", heightRT);
-            computeShader.SetTexture(0, "_GrassMaskMapRT", maskRT);
+            cmd.SetComputeMatrixParam(computeShader, "_VPMatrix", Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
+            cmd.SetComputeFloatParam(computeShader, "_FullDensityDistance", fullDensityDistance);
+            cmd.SetComputeFloatParam(computeShader, "_DensityFalloffExponent", densityFalloffExponent);
+            cmd.SetComputeVectorParam(computeShader, "_BoundsMin", cameraBounds.min);
+            cmd.SetComputeVectorParam(computeShader, "_BoundsMax", cameraBounds.max);
+            cmd.SetComputeVectorParam(computeShader, "_CameraPosition", Camera.main.transform.position);
+            cmd.SetComputeVectorParam(computeShader, "_CenterPos", centerPos);
+            cmd.SetComputeFloatParam(computeShader, "_DrawDistance", drawDistance);
+            cmd.SetComputeFloatParam(computeShader, "_TextureUpdateThreshold", textureUpdateThreshold);
+            cmd.SetComputeFloatParam(computeShader, "_Spacing", spacing);
+            cmd.SetComputeIntParams(computeShader, "_GridStartIndex", new int[] { gridStartIndex.x, gridStartIndex.y });
+            cmd.SetComputeIntParams(computeShader, "_GridSize", new int[] { gridSize.x, gridSize.y });
+            cmd.SetComputeBufferParam(computeShader, 0, "_GrassPositions", grassPositionsBuffer);
+            cmd.SetComputeTextureParam(computeShader, 0, "_GrassHeightMapRT", heightRT);
+            cmd.SetComputeTextureParam(computeShader, 0, "_GrassMaskMapRT", maskRT);
             if (hiZRT != null)
             {
                 cmd.SetComputeTextureParam(computeShader, 0, "_HiZTexture", hiZRT);
             }
-            computeShader.SetInt("_HiZMipCount", hiZMipCount);
+            cmd.SetComputeIntParam(computeShader, "_HiZMipCount", hiZMipCount);
 
             grassPositionsBuffer.SetCounterValue(0);
 
