@@ -48,6 +48,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         private ComputeShader computeShader;
 
+        RenderingData cachedRenderingData;
+
         public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
         {
             this.heightMapLayer = heightMapLayer;
@@ -71,6 +73,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             RenderingUtils.ReAllocateHandleIfNeeded(ref maskRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.RFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassMaskRT");
             RenderingUtils.ReAllocateHandleIfNeeded(ref colorRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassColorRT");
             RenderingUtils.ReAllocateHandleIfNeeded(ref slopeRT, new RenderTextureDescriptor(textureSize, textureSize, RenderTextureFormat.ARGBFloat, 0), FilterMode.Bilinear, TextureWrapMode.Clamp, name: "GrassSlopeRT");
+
+            cachedRenderingData = renderingData;
         }
 
         ComputeBuffer grassPositionsBuffer;
@@ -226,10 +230,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            ref RenderingData rd = ref frameData.Get<RenderingData>();
             renderGraph.AddRenderPass("Grass Data Pass", (RenderGraphContext ctx) =>
             {
-                Execute(ctx.renderContext, ref rd);
+                Execute(ctx.renderContext, ref cachedRenderingData);
             });
         }
 
