@@ -79,8 +79,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         ComputeBuffer grassPositionsBuffer;
 
-        [System.Obsolete("Use RecordRenderGraph with Render Graph API", false)]
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        void RenderPass(CommandBuffer cmd, ScriptableRenderContext context, ref RenderingData renderingData)
         {
             //Now to render the textures we need we have two ways :
             //- Having a second camera in our scene that is looking from above and renders the necessary data (which is expensive)
@@ -90,8 +89,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             if (InfiniteGrassRenderer.instance == null || heightMapMat == null || computeShader == null)
                 return;
-
-            CommandBuffer cmd = CommandBufferPool.Get();
 
             float spacing = InfiniteGrassRenderer.instance.spacing;
             float fullDensityDistance = InfiniteGrassRenderer.instance.fullDensityDistance;
@@ -224,7 +221,13 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
+        }
 
+        [System.Obsolete("Use RecordRenderGraph with Render Graph API", false)]
+        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        {
+            CommandBuffer cmd = CommandBufferPool.Get();
+            RenderPass(cmd, context, ref renderingData);
             CommandBufferPool.Release(cmd);
         }
 
@@ -240,7 +243,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.pass = this;
                 builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
                 {
-                    data.pass.Execute(ctx.renderContext, ref data.pass.cachedRenderingData);
+                    data.pass.RenderPass(ctx.cmd, ctx.renderContext, ref data.pass.cachedRenderingData);
                 });
             }
         }
