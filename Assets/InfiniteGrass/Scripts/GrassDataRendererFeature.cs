@@ -92,7 +92,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 {
                     Debug.LogWarning("Hi-Z compute shader kernels not found");
                     hiZRT?.Release();
-                    hiZRT = null;
+                    hiZRT = CreateFallbackHiZ();
                     hiZMipCount = 0;
                     hizInitKernel = -1;
                     hizDownKernel = -1;
@@ -102,7 +102,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 hiZMipCount = 0;
                 hiZRT?.Release();
-                hiZRT = null;
+                hiZRT = CreateFallbackHiZ();
                 hizInitKernel = -1;
                 hizDownKernel = -1;
             }
@@ -316,6 +316,20 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             Bounds bounds = new Bounds(center, size);
             bounds.Expand(1);
             return bounds;
+        }
+
+        RTHandle CreateFallbackHiZ()
+        {
+            RenderTextureDescriptor desc = new RenderTextureDescriptor(1, 1, RenderTextureFormat.RFloat, 0)
+            {
+                useMipMap = false,
+                autoGenerateMips = false,
+                enableRandomWrite = true,
+                mipCount = 1
+            };
+            RTHandle handle = null;
+            RenderingUtils.ReAllocateIfNeeded(ref handle, desc, FilterMode.Point);
+            return handle;
         }
 
         public void Dispose()
