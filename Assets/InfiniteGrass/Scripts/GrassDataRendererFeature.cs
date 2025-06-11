@@ -217,7 +217,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 int height = renderingData.cameraData.camera.pixelHeight;
 
                 cmd.SetComputeTextureParam(hizShader, hizInitKernel, "_CameraDepthTexture", renderingData.cameraData.renderer.cameraDepthTargetHandle);
-                cmd.SetComputeTextureParam(hizShader, hizInitKernel, "_HiZTexture", hiZRT, 0);
+                cmd.SetComputeTextureParam(hizShader, hizInitKernel, "_HiZTexture", hiZRT);
                 cmd.SetComputeIntParams(hizShader, "_Size", new int[] { width, height });
                 cmd.DispatchCompute(hizShader, hizInitKernel, Mathf.CeilToInt(width / 8f), Mathf.CeilToInt(height / 8f), 1);
 
@@ -227,7 +227,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     int h = Mathf.Max(1, height >> m);
                     cmd.SetComputeIntParam(hizShader, "_MipLevel", m);
                     cmd.SetComputeIntParams(hizShader, "_Size", new int[] { w, h });
-                    cmd.SetComputeTextureParam(hizShader, hizDownKernel, "_HiZTexture", hiZRT, m);
+                    cmd.SetComputeTextureParam(hizShader, hizDownKernel, "_HiZTexture", hiZRT);
                     cmd.DispatchCompute(hizShader, hizDownKernel, Mathf.CeilToInt(w / 8f), Mathf.CeilToInt(h / 8f), 1);
                 }
 
