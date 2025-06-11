@@ -15323,6 +15323,7 @@ MonoBehaviour:
   grassMaterial: {fileID: 2100000, guid: 851879c6d723afb4a8aaa2242cee777c, type: 2}
   spacing: 0.1
   drawDistance: 250
+  subdivisionDistance: 100
   fullDensityDistance: 0.5
   densityFalloffExponent: 4
   grassMeshSubdivision: 5
