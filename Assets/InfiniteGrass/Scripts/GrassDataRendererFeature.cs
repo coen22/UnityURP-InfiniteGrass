@@ -241,7 +241,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            using (var builder = renderGraph.AddRasterRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
+            using (var builder = renderGraph.AddRenderPass<PassData>("Grass Data Pass", out var passData, new ProfilingSampler("Grass Data Pass")))
             {
                 passData.pass = this;
                 builder.UseAllGlobalTextures(true);
@@ -260,7 +260,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 builder.SetGlobalTextureAfterPass(colorHandle, GrassColorId);
                 builder.SetGlobalTextureAfterPass(slopeHandle, GrassSlopeId);
 
-                builder.SetRenderFunc(static (PassData data, RasterGraphContext ctx) =>
+                builder.SetRenderFunc(static (PassData data, RenderGraphContext ctx) =>
                 {
                     data.pass.RenderPass(ctx.cmd, ctx.renderContext, ref data.pass.cachedRenderingData);
                 });
