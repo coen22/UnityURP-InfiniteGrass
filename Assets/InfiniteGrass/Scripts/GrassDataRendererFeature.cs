@@ -126,7 +126,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             ConfigureClear(ClearFlag.All, Color.black);
         }
 
-        private ComputeBuffer _grassPositionsBuffer;
+        private GraphicsBuffer _grassPositionsBuffer;
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
@@ -180,8 +180,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.UseColorBuffer(passData.color, 0);
-                builder.UseDepthBuffer(passData.depth, DepthAccess.Write);
+                builder.SetColorAttachment(passData.color, 0);
+                builder.SetDepthAttachment(passData.depth, DepthAccess.Write);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((HeightPassData data, RasterGraphContext ctx) =>
                 {
@@ -205,7 +205,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.UseColorBuffer(passData.color, 0);
+                builder.SetColorAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((MaskPassData data, RasterGraphContext ctx) =>
                 {
@@ -229,7 +229,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.UseColorBuffer(passData.color, 0);
+                builder.SetColorAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((ColorPassData data, RasterGraphContext ctx) =>
                 {
@@ -253,7 +253,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.UseColorBuffer(passData.color, 0);
+                builder.SetColorAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((SlopePassData data, RasterGraphContext ctx) =>
                 {
@@ -265,7 +265,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             }
 
             _grassPositionsBuffer?.Release();
-            _grassPositionsBuffer = new ComputeBuffer((int)(1000000 * maxBufferCount), sizeof(float) * 4, ComputeBufferType.Append);
+            _grassPositionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Append, (int)(1000000 * maxBufferCount), sizeof(float) * 4);
             _grassPositionsBuffer.SetCounterValue(0);
             BufferHandle posHandle = renderGraph.ImportBuffer(_grassPositionsBuffer);
 
@@ -327,7 +327,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             }
         }
 
-        struct HeightPassData
+        class HeightPassData
         {
             public RendererListHandle rendererList;
             public TextureHandle color;
@@ -336,7 +336,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public Matrix4x4 proj;
         }
 
-        struct MaskPassData
+        class MaskPassData
         {
             public RendererListHandle rendererList;
             public TextureHandle color;
@@ -344,7 +344,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public Matrix4x4 proj;
         }
 
-        struct ColorPassData
+        class ColorPassData
         {
             public RendererListHandle rendererList;
             public TextureHandle color;
@@ -352,7 +352,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public Matrix4x4 proj;
         }
 
-        struct SlopePassData
+        class SlopePassData
         {
             public RendererListHandle rendererList;
             public TextureHandle color;
@@ -360,12 +360,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public Matrix4x4 proj;
         }
 
-        struct ComputePassData
+        class ComputePassData
         {
             public TextureHandle height;
             public TextureHandle mask;
             public BufferHandle positions;
-            public ComputeBuffer positionBuffer;
+            public GraphicsBuffer positionBuffer;
             public Matrix4x4 cameraVP;
             public Vector2 centerPos;
             public Bounds bounds;
