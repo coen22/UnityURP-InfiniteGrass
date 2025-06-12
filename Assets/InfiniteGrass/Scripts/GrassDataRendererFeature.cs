@@ -134,6 +134,40 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             if (!InfiniteGrassRenderer.instance || !_heightMapMat || !_computeShader)
                 return;
 
+            // Ensure render textures are allocated when using the render graph.
+            const int textureSize = 2048;
+
+            var heightDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightRT, heightDesc, FilterMode.Bilinear);
+
+            var depthDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.None,
+                depthStencilFormat = GraphicsFormat.D32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightDepthRT, depthDesc, FilterMode.Bilinear);
+
+            var maskDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _maskRT, maskDesc, FilterMode.Bilinear);
+
+            var colorDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _colorRT, colorDesc, FilterMode.Bilinear);
+
+            var slopeDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
+
             var renderingData = _renderingData;
 
             float spacing = InfiniteGrassRenderer.instance.spacing;
