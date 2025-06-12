@@ -180,7 +180,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.SetColorAttachment(passData.color, 0);
+                builder.SetRenderAttachment(passData.color, 0);
                 builder.SetDepthAttachment(passData.depth, DepthAccess.Write);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((HeightPassData data, RasterGraphContext ctx) =>
@@ -205,7 +205,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.SetColorAttachment(passData.color, 0);
+                builder.SetRenderAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((MaskPassData data, RasterGraphContext ctx) =>
                 {
@@ -229,7 +229,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.SetColorAttachment(passData.color, 0);
+                builder.SetRenderAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((ColorPassData data, RasterGraphContext ctx) =>
                 {
@@ -253,7 +253,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.view = viewMatrix;
                 passData.proj = projectionMatrix;
 
-                builder.SetColorAttachment(passData.color, 0);
+                builder.SetRenderAttachment(passData.color, 0);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((SlopePassData data, RasterGraphContext ctx) =>
                 {
