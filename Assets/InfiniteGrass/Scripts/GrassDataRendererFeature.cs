@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
 public class GrassDataRendererFeature : ScriptableRendererFeature
@@ -42,6 +43,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
+        _grassDataPass.Setup(renderingData);
         renderer.EnqueuePass(_grassDataPass);
     }
 
@@ -67,6 +69,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private readonly Material _heightMapMat;
 
         private readonly ComputeShader _computeShader;
+        private RenderingData _renderingData;
 
         public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
         {
@@ -79,7 +82,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _shaderTagsList.Add(new ShaderTagId("UniversalForwardOnly"));
         }
 
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        public void Setup(in RenderingData renderingData)
+        {
+            _renderingData = renderingData;
+        }
+
+        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             const int textureSize = 2048;
 
@@ -118,18 +126,283 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             ConfigureClear(ClearFlag.All, Color.black);
         }
 
-        private ComputeBuffer _grassPositionsBuffer;
+        private GraphicsBuffer _grassPositionsBuffer;
+
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        {
+            if (!InfiniteGrassRenderer.instance || !_heightMapMat || !_computeShader)
+                return;
+
+            // Ensure render textures are allocated when using the render graph.
+            const int textureSize = 2048;
+
+            var heightDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightRT, heightDesc, FilterMode.Bilinear);
+
+            var depthDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.None,
+                depthStencilFormat = GraphicsFormat.D32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightDepthRT, depthDesc, FilterMode.Bilinear);
+
+            var maskDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _maskRT, maskDesc, FilterMode.Bilinear);
+
+            var colorDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _colorRT, colorDesc, FilterMode.Bilinear);
+
+            var slopeDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
+
+            var renderingData = _renderingData;
+
+            float spacing = InfiniteGrassRenderer.instance.spacing;
+            float fullDensityDistance = InfiniteGrassRenderer.instance.fullDensityDistance;
+            float drawDistance = InfiniteGrassRenderer.instance.drawDistance;
+            float maxBufferCount = InfiniteGrassRenderer.instance.maxBufferCount;
+            float densityFalloffExponent = InfiniteGrassRenderer.instance.densityFalloffExponent;
+            float textureUpdateThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
+
+            Bounds cameraBounds = CalculateCameraBounds(Camera.main, drawDistance);
+
+            if (!Camera.main)
+            {
+                Debug.LogError("No main camera found. Grass data rendering requires a main camera.");
+                return;
+            }
+
+            Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
+                                            Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+
+            Matrix4x4 viewMatrix = Matrix4x4.TRS(new Vector3(centerPos.x, cameraBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
+            Matrix4x4 projectionMatrix = Matrix4x4.Ortho(-(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
+                                                        -(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
+                                                        0, cameraBounds.size.y);
+
+            TextureHandle heightHandle = renderGraph.ImportTexture(_heightRT);
+            TextureHandle depthHandle = renderGraph.ImportTexture(_heightDepthRT);
+            TextureHandle maskHandle = renderGraph.ImportTexture(_maskRT);
+            TextureHandle colorHandle = renderGraph.ImportTexture(_colorRT);
+            TextureHandle slopeHandle = renderGraph.ImportTexture(_slopeRT);
+
+            // Height pass
+            {
+                var drawSetting = CreateDrawingSettings(_shaderTagsList, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
+                _heightMapMat.SetVector(BoundsYMinMax, new Vector2(cameraBounds.min.y, cameraBounds.max.y));
+                drawSetting.overrideMaterial = _heightMapMat;
+                var filterSetting = new FilteringSettings(RenderQueueRange.all, _heightMapLayer);
+                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rendererList = renderGraph.CreateRendererList(rendererListDesc);
+
+                using var builder = renderGraph.AddRasterRenderPass<HeightPassData>("Grass Height Pass", out var passData);
+                passData.rendererList = rendererList;
+                passData.color = heightHandle;
+                passData.depth = depthHandle;
+                passData.view = viewMatrix;
+                passData.proj = projectionMatrix;
+
+                builder.SetRenderAttachment(passData.color, 0);
+                builder.SetRenderAttachmentDepth(passData.depth);
+                builder.UseRendererList(passData.rendererList);
+                builder.SetRenderFunc((HeightPassData data, RasterGraphContext ctx) =>
+                {
+                    var cmd = ctx.cmd;
+                    cmd.SetViewProjectionMatrices(data.view, data.proj);
+                    cmd.ClearRenderTarget(true, true, Color.black);
+                    cmd.DrawRendererList(data.rendererList);
+                });
+            }
+
+            // Mask pass
+            {
+                var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref renderingData, SortingCriteria.CommonTransparent);
+                var filterSetting = new FilteringSettings(RenderQueueRange.all);
+                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rendererList = renderGraph.CreateRendererList(rendererListDesc);
+
+                using var builder = renderGraph.AddRasterRenderPass<MaskPassData>("Grass Mask Pass", out var passData);
+                passData.rendererList = rendererList;
+                passData.color = maskHandle;
+                passData.view = viewMatrix;
+                passData.proj = projectionMatrix;
+
+                builder.SetRenderAttachment(passData.color, 0);
+                builder.UseRendererList(passData.rendererList);
+                builder.SetRenderFunc((MaskPassData data, RasterGraphContext ctx) =>
+                {
+                    var cmd = ctx.cmd;
+                    cmd.SetViewProjectionMatrices(data.view, data.proj);
+                    cmd.ClearRenderTarget(true, true, Color.clear);
+                    cmd.DrawRendererList(data.rendererList);
+                });
+            }
+
+            // Color pass
+            {
+                var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref renderingData, SortingCriteria.CommonTransparent);
+                var filterSetting = new FilteringSettings(RenderQueueRange.all);
+                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rendererList = renderGraph.CreateRendererList(rendererListDesc);
+
+                using var builder = renderGraph.AddRasterRenderPass<ColorPassData>("Grass Color Pass", out var passData);
+                passData.rendererList = rendererList;
+                passData.color = colorHandle;
+                passData.view = viewMatrix;
+                passData.proj = projectionMatrix;
+
+                builder.SetRenderAttachment(passData.color, 0);
+                builder.UseRendererList(passData.rendererList);
+                builder.SetRenderFunc((ColorPassData data, RasterGraphContext ctx) =>
+                {
+                    var cmd = ctx.cmd;
+                    cmd.SetViewProjectionMatrices(data.view, data.proj);
+                    cmd.ClearRenderTarget(true, true, Color.clear);
+                    cmd.DrawRendererList(data.rendererList);
+                });
+            }
+
+            // Slope pass
+            {
+                var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref renderingData, SortingCriteria.CommonTransparent);
+                var filterSetting = new FilteringSettings(RenderQueueRange.all);
+                var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
+                var rendererList = renderGraph.CreateRendererList(rendererListDesc);
+
+                using var builder = renderGraph.AddRasterRenderPass<SlopePassData>("Grass Slope Pass", out var passData);
+                passData.rendererList = rendererList;
+                passData.color = slopeHandle;
+                passData.view = viewMatrix;
+                passData.proj = projectionMatrix;
+
+                builder.SetRenderAttachment(passData.color, 0);
+                builder.UseRendererList(passData.rendererList);
+                builder.SetRenderFunc((SlopePassData data, RasterGraphContext ctx) =>
+                {
+                    var cmd = ctx.cmd;
+                    cmd.SetViewProjectionMatrices(data.view, data.proj);
+                    cmd.ClearRenderTarget(true, true, Color.clear);
+                    cmd.DrawRendererList(data.rendererList);
+                });
+            }
+
+            _grassPositionsBuffer?.Release();
+            _grassPositionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Append, (int)(1000000 * maxBufferCount), sizeof(float) * 4);
+            _grassPositionsBuffer.SetCounterValue(0);
+            BufferHandle posHandle = renderGraph.ImportBuffer(_grassPositionsBuffer);
+
+            // Compute pass
+            {
+                using var builder = renderGraph.AddComputePass<ComputePassData>("Grass Compute Pass", out var passData);
+                passData.height = heightHandle;
+                passData.mask = maskHandle;
+                passData.positions = posHandle;
+                passData.positionBuffer = _grassPositionsBuffer;
+                passData.cameraVP = Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix;
+                passData.centerPos = centerPos;
+                passData.bounds = cameraBounds;
+                passData.spacing = spacing;
+                passData.fullDensity = fullDensityDistance;
+                passData.densityExponent = densityFalloffExponent;
+                passData.drawDistance = drawDistance;
+                passData.textureThreshold = textureUpdateThreshold;
+                passData.color = colorHandle;
+                passData.slope = slopeHandle;
+
+                builder.UseTexture(passData.height);
+                builder.UseTexture(passData.mask);
+                builder.UseTexture(passData.color);
+                builder.UseTexture(passData.slope);
+                builder.UseBuffer(passData.positions, AccessFlags.Write);
+                builder.AllowGlobalStateModification(true);
+
+                builder.SetRenderFunc((ComputePassData data, ComputeGraphContext ctx) =>
+                {
+                    var cmd = ctx.cmd;
+
+                    cmd.SetGlobalTexture(GrassColorRT, data.color);
+                    cmd.SetGlobalTexture(GrassSlopeRT, data.slope);
+
+                    _computeShader.SetMatrix(VpMatrix, data.cameraVP);
+                    _computeShader.SetFloat(FullDensityDistance, data.fullDensity);
+                    _computeShader.SetFloat(DensityFalloffExponent, data.densityExponent);
+                    _computeShader.SetVector(BoundsMin, data.bounds.min);
+                    _computeShader.SetVector(BoundsMax, data.bounds.max);
+                    _computeShader.SetVector(CameraPosition, Camera.main.transform.position);
+                    _computeShader.SetVector(CenterPos, data.centerPos);
+                    _computeShader.SetFloat(DrawDistance, data.drawDistance);
+                    _computeShader.SetFloat(TextureUpdateThreshold, data.textureThreshold);
+                    _computeShader.SetFloat(Spacing, data.spacing);
+
+                    Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(data.bounds.size.x / data.spacing), Mathf.CeilToInt(data.bounds.size.z / data.spacing));
+                    Vector2Int gridStartIndex = new Vector2Int(Mathf.FloorToInt(data.bounds.min.x / data.spacing), Mathf.FloorToInt(data.bounds.min.z / data.spacing));
+
+                    _computeShader.SetVector(GridStartIndex, (Vector2)gridStartIndex);
+                    _computeShader.SetVector(GridSize, (Vector2)gridSize);
+                    _computeShader.SetBuffer(0, GrassPositions, data.positionBuffer);
+                    _computeShader.SetTexture(0, GrassHeightMapRT, data.height);
+                    _computeShader.SetTexture(0, GrassMaskMapRT, data.mask);
+
+                    cmd.DispatchCompute(_computeShader, 0, Mathf.CeilToInt((float)gridSize.x / 8), Mathf.CeilToInt((float)gridSize.y / 8), 1);
+
+                    cmd.SetGlobalBuffer(GrassPositions, data.positionBuffer);
+                    cmd.CopyCounterValue(data.positionBuffer, InfiniteGrassRenderer.instance.argsBuffer, 4);
+
+                    if (InfiniteGrassRenderer.instance.previewVisibleGrassCount)
+                        cmd.CopyCounterValue(data.positionBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
+                });
+            }
+        }
 
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
-            //Now to render the textures we need we have two ways :
-            //- Having a second camera in our scene that is looking from above and renders the necessary data (which is expensive)
-            //- Manipulating the actuall main camera to render objects from above by changing the view and projection matricies (which is faster and the one I'm using here)
-            //I took this technic from Colin Leung (NiloCat) repo
-            //You can check it here (more detailed): https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample/blob/master/Assets/URPMobileGrassInstancedIndirectDemo/InstancedIndirectGrass/Core/GrassBending/GrassBendingRTPrePass.cs
-
             if (!InfiniteGrassRenderer.instance || !_heightMapMat || !_computeShader)
                 return;
+
+            const int textureSize = 2048;
+
+            var heightDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightRT, heightDesc, FilterMode.Bilinear);
+
+            var depthDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.None,
+                depthStencilFormat = GraphicsFormat.D32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _heightDepthRT, depthDesc, FilterMode.Bilinear);
+
+            var maskDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _maskRT, maskDesc, FilterMode.Bilinear);
+
+            var colorDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _colorRT, colorDesc, FilterMode.Bilinear);
+
+            var slopeDesc = new RenderTextureDescriptor(textureSize, textureSize)
+            {
+                graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            };
+            RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
 
             CommandBuffer cmd = CommandBufferPool.Get();
 
@@ -141,30 +414,28 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float textureUpdateThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
 
             Bounds cameraBounds = CalculateCameraBounds(Camera.main, drawDistance);
-            
+
             if (!Camera.main)
             {
                 Debug.LogError("No main camera found. Grass data rendering requires a main camera.");
                 return;
             }
 
-            //First thing is to calculate the new position of the camera
-            //The "centerPos" refer to the XZ position of the camera while the Y position is the max.y of the calculated bounds
-            //You can see that we are moving the camera in steps, cause we want the textures to not get updated until we move a certain threshold
-            //if we let the camera move a lot we gonna have instability issues and a lot of flikering so we try to minimize that as much as possible
-            Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+            Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
+                                            Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
 
             Matrix4x4 viewMatrix = Matrix4x4.TRS(new Vector3(centerPos.x, cameraBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
-            Matrix4x4 projectionMatrix = Matrix4x4.Ortho(-(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold, -(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold, 0, cameraBounds.size.y);
+            Matrix4x4 projectionMatrix = Matrix4x4.Ortho(-(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
+                                                        -(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
+                                                        0, cameraBounds.size.y);
 
-            cmd.SetViewProjectionMatrices(viewMatrix, projectionMatrix);//Update the camera marticies
+            cmd.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Height Map RT")))
             {
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
 
-                //Replace the material of the objects with the "heightMapLayer" and render them
                 var drawSetting = CreateDrawingSettings(_shaderTagsList, ref renderingData, renderingData.cameraData.defaultOpaqueSortFlags);
                 _heightMapMat.SetVector(BoundsYMinMax, new Vector2(cameraBounds.min.y, cameraBounds.max.y));
                 drawSetting.overrideMaterial = _heightMapMat;
@@ -172,17 +443,19 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                 var rendererListDesc = new RendererListParams(renderingData.cullResults, drawSetting, filterSetting);
                 var rendererList = context.CreateRendererList(ref rendererListDesc);
+                cmd.SetRenderTarget(_heightRT, _heightDepthRT);
+                cmd.ClearRenderTarget(true, true, Color.black);
                 cmd.DrawRendererList(rendererList);
             }
 
-            cmd.SetRenderTarget(_maskRT);//Change the texture we are drawing to
-            cmd.ClearRenderTarget(true, true, new Color(0, 0, 0, 0));//Clear it before drawing to it
+            cmd.SetRenderTarget(_maskRT);
+            cmd.ClearRenderTarget(true, true, new Color(0, 0, 0, 0));
 
             using (new ProfilingScope(cmd, new ProfilingSampler("Grass Mask RT")))
             {
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
-                 
+
                 var drawSetting = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref renderingData, SortingCriteria.CommonTransparent);
                 var filterSetting = new FilteringSettings(RenderQueueRange.all);
 
@@ -223,21 +496,18 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 cmd.DrawRendererList(rendererList);
             }
 
-            cmd.SetGlobalTexture(GrassColorRT, _colorRT);//Set the COLOR and SLOPE textures as global
+            cmd.SetGlobalTexture(GrassColorRT, _colorRT);
             cmd.SetGlobalTexture(GrassSlopeRT, _slopeRT);
 
-            //Finally we reset the camera matricies to the original ones
             cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
-            //After finishing rendering the textures
-            //We compute the grass positions buffer
             Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(cameraBounds.size.x / spacing), Mathf.CeilToInt(cameraBounds.size.z / spacing));
             Vector2Int gridStartIndex = new Vector2Int(Mathf.FloorToInt(cameraBounds.min.x / spacing), Mathf.FloorToInt(cameraBounds.min.z / spacing));
 
             _grassPositionsBuffer?.Release();
-            _grassPositionsBuffer = new ComputeBuffer((int)(1000000 * maxBufferCount), sizeof(float) * 4, ComputeBufferType.Append);
+            _grassPositionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Append, (int)(1000000 * maxBufferCount), sizeof(float) * 4);
 
             _computeShader.SetMatrix(VpMatrix, Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
             _computeShader.SetFloat(FullDensityDistance, fullDensityDistance);
@@ -258,22 +528,67 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _grassPositionsBuffer.SetCounterValue(0);
 
             cmd.DispatchCompute(_computeShader, 0, Mathf.CeilToInt((float)gridSize.x / 8), Mathf.CeilToInt((float)gridSize.y / 8), 1);
-            
-            //After Dispatching we set the positions buffer as global
-            cmd.SetGlobalBuffer(GrassPositions, _grassPositionsBuffer);
 
-            //Finally we copy the counter value to the argsBuffer in the script so that the DrawMeshInstancedIndirect could execute properly
+            cmd.SetGlobalBuffer(GrassPositions, _grassPositionsBuffer);
             cmd.CopyCounterValue(_grassPositionsBuffer, InfiniteGrassRenderer.instance.argsBuffer, 4);
 
             if (InfiniteGrassRenderer.instance.previewVisibleGrassCount)
-            {
                 cmd.CopyCounterValue(_grassPositionsBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
-            }
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
-
             CommandBufferPool.Release(cmd);
+        }
+
+        class HeightPassData
+        {
+            public RendererListHandle rendererList;
+            public TextureHandle color;
+            public TextureHandle depth;
+            public Matrix4x4 view;
+            public Matrix4x4 proj;
+        }
+
+        class MaskPassData
+        {
+            public RendererListHandle rendererList;
+            public TextureHandle color;
+            public Matrix4x4 view;
+            public Matrix4x4 proj;
+        }
+
+        class ColorPassData
+        {
+            public RendererListHandle rendererList;
+            public TextureHandle color;
+            public Matrix4x4 view;
+            public Matrix4x4 proj;
+        }
+
+        class SlopePassData
+        {
+            public RendererListHandle rendererList;
+            public TextureHandle color;
+            public Matrix4x4 view;
+            public Matrix4x4 proj;
+        }
+
+        class ComputePassData
+        {
+            public TextureHandle height;
+            public TextureHandle mask;
+            public TextureHandle color;
+            public TextureHandle slope;
+            public BufferHandle positions;
+            public GraphicsBuffer positionBuffer;
+            public Matrix4x4 cameraVP;
+            public Vector2 centerPos;
+            public Bounds bounds;
+            public float spacing;
+            public float fullDensity;
+            public float densityExponent;
+            public float drawDistance;
+            public float textureThreshold;
         }
 
 
