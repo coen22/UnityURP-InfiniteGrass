@@ -87,8 +87,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _renderingData = renderingData;
         }
 
-        [System.Obsolete("Use Configure instead")]
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
             const int textureSize = 2048;
 
