@@ -318,17 +318,22 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.densityExponent = densityFalloffExponent;
                 passData.drawDistance = drawDistance;
                 passData.textureThreshold = textureUpdateThreshold;
+                passData.color = colorHandle;
+                passData.slope = slopeHandle;
 
                 builder.UseTexture(passData.height);
                 builder.UseTexture(passData.mask);
+                builder.UseTexture(passData.color);
+                builder.UseTexture(passData.slope);
                 builder.UseBuffer(passData.positions, AccessFlags.Write);
+                builder.AllowGlobalStateModification(true);
 
                 builder.SetRenderFunc((ComputePassData data, ComputeGraphContext ctx) =>
                 {
                     var cmd = ctx.cmd;
 
-                    cmd.SetGlobalTexture(GrassColorRT, colorHandle); // set color & slope
-                    cmd.SetGlobalTexture(GrassSlopeRT, slopeHandle);
+                    cmd.SetGlobalTexture(GrassColorRT, data.color);
+                    cmd.SetGlobalTexture(GrassSlopeRT, data.slope);
 
                     _computeShader.SetMatrix(VpMatrix, data.cameraVP);
                     _computeShader.SetFloat(FullDensityDistance, data.fullDensity);
@@ -398,6 +403,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         {
             public TextureHandle height;
             public TextureHandle mask;
+            public TextureHandle color;
+            public TextureHandle slope;
             public BufferHandle positions;
             public GraphicsBuffer positionBuffer;
             public Matrix4x4 cameraVP;
