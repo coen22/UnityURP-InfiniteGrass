@@ -87,6 +87,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _renderingData = renderingData;
         }
 
+        [System.Obsolete("Use Configure instead")]
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             const int textureSize = 2048;
@@ -181,7 +182,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.proj = projectionMatrix;
 
                 builder.SetRenderAttachment(passData.color, 0);
-                builder.SetDepthAttachment(passData.depth, DepthAccess.Write);
+                builder.SetRenderAttachmentDepth(passData.depth);
                 builder.UseRendererList(passData.rendererList);
                 builder.SetRenderFunc((HeightPassData data, RasterGraphContext ctx) =>
                 {
