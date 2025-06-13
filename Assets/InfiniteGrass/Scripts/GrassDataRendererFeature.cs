@@ -108,6 +108,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var slopeTex = rg.ImportTexture(_slopeRT);
 
             var camera = _renderingData.cameraData.camera;
+            if (InfiniteGrassRenderer.instance)
+                InfiniteGrassRenderer.instance.currentRenderCamera = camera;
             var spacing = InfiniteGrassRenderer.instance.spacing;
             var fullDensityDist = InfiniteGrassRenderer.instance.fullDensityDistance;
             var drawDistance = InfiniteGrassRenderer.instance.drawDistance;
