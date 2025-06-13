@@ -169,6 +169,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var slopeRl = rg.CreateRendererList(new RendererListParams(_renderingData.cullResults, slopeSettings, slopeFilter));
 
             using var builder = rg.AddRasterRenderPass<MergedPassData>("Grass Merged", out var pass);
+            builder.AllowPassCulling(false);
             pass.HeightList = heightList;
             pass.MaskList   = maskRl;
             pass.ColorList  = colorRl;
@@ -231,6 +232,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var posHandle = rg.ImportBuffer(_grassPositionsBuffer);
 
             using var builder = rg.AddComputePass<ComputePassData>("Grass Compute", out var pass);
+            builder.AllowPassCulling(false);
+            builder.EnableAsyncCompute(true);
             
             pass.Height           = height;
             pass.Mask             = mask;
