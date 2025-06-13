@@ -176,16 +176,17 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float densityFalloffExponent = InfiniteGrassRenderer.instance.densityFalloffExponent;
             float textureUpdateThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
 
-            Bounds cameraBounds = CalculateCameraBounds(Camera.main, drawDistance);
-
-            if (!Camera.main)
+            Camera camera = renderingData.cameraData.camera;
+            if (!camera)
             {
-                Debug.LogError("No main camera found. Grass data rendering requires a main camera.");
+                Debug.LogError("No camera found for grass data rendering.");
                 return;
             }
 
-            Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
-                                            Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+            Bounds cameraBounds = CalculateCameraBounds(camera, drawDistance);
+
+            Vector2 centerPos = new Vector2(Mathf.Floor(camera.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
+                                            Mathf.Floor(camera.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
 
             Matrix4x4 viewMatrix = Matrix4x4.TRS(new Vector3(centerPos.x, cameraBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
             Matrix4x4 projectionMatrix = Matrix4x4.Ortho(-(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
@@ -310,7 +311,10 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 passData.mask = maskHandle;
                 passData.positions = posHandle;
                 passData.positionBuffer = _grassPositionsBuffer;
-                passData.cameraVP = Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix;
+                passData.cameraVP   = camera.projectionMatrix * camera.worldToCameraMatrix;
+                passData.cameraView = camera.worldToCameraMatrix;
+                passData.cameraProj = camera.projectionMatrix;
+                passData.cameraPos  = camera.transform.position;
                 passData.centerPos = centerPos;
                 passData.bounds = cameraBounds;
                 passData.spacing = spacing;
@@ -340,7 +344,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     _computeShader.SetFloat(DensityFalloffExponent, data.densityExponent);
                     _computeShader.SetVector(BoundsMin, data.bounds.min);
                     _computeShader.SetVector(BoundsMax, data.bounds.max);
-                    _computeShader.SetVector(CameraPosition, Camera.main.transform.position);
+                    _computeShader.SetVector(CameraPosition, data.cameraPos);
                     _computeShader.SetVector(CenterPos, data.centerPos);
                     _computeShader.SetFloat(DrawDistance, data.drawDistance);
                     _computeShader.SetFloat(TextureUpdateThreshold, data.textureThreshold);
@@ -362,6 +366,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
                     if (InfiniteGrassRenderer.instance.previewVisibleGrassCount)
                         cmd.CopyCounterValue(data.positionBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
+
+                    cmd.SetViewProjectionMatrices(data.cameraView, data.cameraProj);
                 });
             }
         }
@@ -413,16 +419,17 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float densityFalloffExponent = InfiniteGrassRenderer.instance.densityFalloffExponent;
             float textureUpdateThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
 
-            Bounds cameraBounds = CalculateCameraBounds(Camera.main, drawDistance);
-
-            if (!Camera.main)
+            Camera camera = renderingData.cameraData.camera;
+            if (!camera)
             {
-                Debug.LogError("No main camera found. Grass data rendering requires a main camera.");
+                Debug.LogError("No camera found for grass data rendering.");
                 return;
             }
 
-            Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
-                                            Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+            Bounds cameraBounds = CalculateCameraBounds(camera, drawDistance);
+
+            Vector2 centerPos = new Vector2(Mathf.Floor(camera.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold,
+                                            Mathf.Floor(camera.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
 
             Matrix4x4 viewMatrix = Matrix4x4.TRS(new Vector3(centerPos.x, cameraBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
             Matrix4x4 projectionMatrix = Matrix4x4.Ortho(-(drawDistance + textureUpdateThreshold), drawDistance + textureUpdateThreshold,
@@ -499,7 +506,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             cmd.SetGlobalTexture(GrassColorRT, _colorRT);
             cmd.SetGlobalTexture(GrassSlopeRT, _slopeRT);
 
-            cmd.SetViewProjectionMatrices(renderingData.cameraData.camera.worldToCameraMatrix, renderingData.cameraData.camera.projectionMatrix);
+            cmd.SetViewProjectionMatrices(camera.worldToCameraMatrix, camera.projectionMatrix);
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
 
@@ -509,12 +516,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _grassPositionsBuffer?.Release();
             _grassPositionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Append, (int)(1000000 * maxBufferCount), sizeof(float) * 4);
 
-            _computeShader.SetMatrix(VpMatrix, Camera.main.projectionMatrix * Camera.main.worldToCameraMatrix);
+            _computeShader.SetMatrix(VpMatrix, camera.projectionMatrix * camera.worldToCameraMatrix);
             _computeShader.SetFloat(FullDensityDistance, fullDensityDistance);
             _computeShader.SetFloat(DensityFalloffExponent, densityFalloffExponent);
             _computeShader.SetVector(BoundsMin, cameraBounds.min);
             _computeShader.SetVector(BoundsMax, cameraBounds.max);
-            _computeShader.SetVector(CameraPosition, Camera.main.transform.position);
+            _computeShader.SetVector(CameraPosition, camera.transform.position);
             _computeShader.SetVector(CenterPos, centerPos);
             _computeShader.SetFloat(DrawDistance, drawDistance);
             _computeShader.SetFloat(TextureUpdateThreshold, textureUpdateThreshold);
@@ -582,6 +589,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public BufferHandle positions;
             public GraphicsBuffer positionBuffer;
             public Matrix4x4 cameraVP;
+            public Matrix4x4 cameraView;
+            public Matrix4x4 cameraProj;
+            public Vector3  cameraPos;
             public Vector2 centerPos;
             public Bounds bounds;
             public float spacing;
