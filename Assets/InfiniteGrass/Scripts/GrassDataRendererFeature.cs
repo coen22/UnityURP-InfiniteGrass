@@ -301,8 +301,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 if (InfiniteGrassRenderer.instance.previewVisibleGrassCount)
                     cmd.CopyCounterValue(d.PositionBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
 
-                /* --- reset to the camera’s own matrices --- */
-                cmd.SetViewProjectionMatrices(d.CamView, d.CamProjection);
+                // End with the camera's matrices already set
             });
         }
 
