@@ -306,7 +306,13 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 _computeShader.SetFloat (DrawDistance,          d.DrawDistance);
                 _computeShader.SetFloat (TextureUpdateThreshold,d.TextureThreshold);
                 _computeShader.SetFloat (Spacing,               d.Spacing);
-                
+
+                // Update material globals so the grass draw call for this
+                // camera uses the matching parameters and textures.
+                cmd.SetGlobalVector(CenterPos, d.CenterPos);
+                cmd.SetGlobalFloat(DrawDistance, d.DrawDistance);
+                cmd.SetGlobalFloat(TextureUpdateThreshold, d.TextureThreshold);
+
                 Vector2Int gridSize  = new(
                     Mathf.CeilToInt(d.Bounds.size.x / d.Spacing),
                     Mathf.CeilToInt(d.Bounds.size.z / d.Spacing));
