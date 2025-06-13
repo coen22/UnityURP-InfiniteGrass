@@ -369,63 +369,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         }
 
         // --------------------------------------------------------------------------------------
-        // SUPPORT TYPES (Render Graph pass‑data structs)
-        // --------------------------------------------------------------------------------------
-        private sealed class HeightPassData
-        {
-            public RendererListHandle RendererList;
-            public TextureHandle Color;
-            public TextureHandle Depth;
-            public Matrix4x4 View;
-            public Matrix4x4 Projection;
-        }
-
-        private sealed class MaskPassData
-        {
-            public RendererListHandle RendererList;
-            public TextureHandle Color;
-            public Matrix4x4 View;
-            public Matrix4x4 Projection;
-        }
-
-        private sealed class ColorPassData
-        {
-            public RendererListHandle RendererList;
-            public TextureHandle Color;
-            public Matrix4x4 View;
-            public Matrix4x4 Projection;
-        }
-
-        private sealed class SlopePassData
-        {
-            public RendererListHandle RendererList;
-            public TextureHandle Color;
-            public Matrix4x4 View;
-            public Matrix4x4 Projection;
-        }
-
-        private sealed class ComputePassData
-        {
-            public TextureHandle Height;
-            public TextureHandle Mask;
-            public TextureHandle Color;
-            public TextureHandle Slope;
-            public BufferHandle Positions;
-            public GraphicsBuffer PositionBuffer;
-            public Matrix4x4 CameraVp;
-            public Matrix4x4 CamView;
-            public Matrix4x4 CamProjection;
-            public Vector3 CameraPosition;
-            public Vector2 CenterPos;
-            public Bounds Bounds;
-            public float Spacing;
-            public float FullDensity;
-            public float DensityExponent;
-            public float DrawDistance;
-            public float TextureThreshold;
-        }
-
-        // --------------------------------------------------------------------------------------
         // HELPERS
         // --------------------------------------------------------------------------------------
         private static Bounds CalculateCameraBounds(Camera camera, float drawDistance)
@@ -455,4 +398,61 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             return b;
         }
     }
+}
+
+// --------------------------------------------------------------------------------------
+// SUPPORT TYPES (Render Graph pass‑data structs)
+// --------------------------------------------------------------------------------------
+public sealed class HeightPassData
+{
+    public RendererListHandle RendererList;
+    public TextureHandle Color;
+    public TextureHandle Depth;
+    public Matrix4x4 View;
+    public Matrix4x4 Projection;
+}
+
+public sealed class MaskPassData
+{
+    public RendererListHandle RendererList;
+    public TextureHandle Color;
+    public Matrix4x4 View;
+    public Matrix4x4 Projection;
+}
+
+public sealed class ColorPassData
+{
+    public RendererListHandle RendererList;
+    public TextureHandle Color;
+    public Matrix4x4 View;
+    public Matrix4x4 Projection;
+}
+
+public sealed class SlopePassData
+{
+    public RendererListHandle RendererList;
+    public TextureHandle Color;
+    public Matrix4x4 View;
+    public Matrix4x4 Projection;
+}
+
+public sealed class ComputePassData
+{
+    public TextureHandle Height;
+    public TextureHandle Mask;
+    public TextureHandle Color;
+    public TextureHandle Slope;
+    public BufferHandle Positions;
+    public GraphicsBuffer PositionBuffer;
+    public Matrix4x4 CameraVp;
+    public Matrix4x4 CamView;
+    public Matrix4x4 CamProjection;
+    public Vector3 CameraPosition;
+    public Vector2 CenterPos;
+    public Bounds Bounds;
+    public float Spacing;
+    public float FullDensity;
+    public float DensityExponent;
+    public float DrawDistance;
+    public float TextureThreshold;
 }
