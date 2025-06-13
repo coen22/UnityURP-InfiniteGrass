@@ -159,7 +159,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 var cmd = ctx.cmd;
                 cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.black);
                 cmd.DrawRendererList(data.RendererList);
             });
         }
@@ -183,7 +182,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 var cmd = ctx.cmd;
                 cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.clear);
                 cmd.DrawRendererList(data.RendererList);
             });
         }
@@ -207,7 +205,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 var cmd = ctx.cmd;
                 cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.clear);
                 cmd.DrawRendererList(data.RendererList);
             });
         }
@@ -231,7 +228,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             {
                 var cmd = ctx.cmd;
                 cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.clear);
                 cmd.DrawRendererList(data.RendererList);
             });
         }
@@ -262,6 +258,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var posHandle = rg.ImportBuffer(_grassPositionsBuffer);
 
             using var builder = rg.AddComputePass<ComputePassData>("Grass Compute", out var pass);
+            builder.EnableAsyncCompute(true);
             
             pass.Height           = height;
             pass.Mask             = mask;
@@ -281,10 +278,10 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.DrawDistance     = drawDistance;
             pass.TextureThreshold = textureThreshold;
 
-            builder.UseTexture(pass.Height);
-            builder.UseTexture(pass.Mask);
-            builder.UseTexture(pass.Color);
-            builder.UseTexture(pass.Slope);
+            builder.UseTexture(pass.Height, AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Mask,   AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Color,  AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Slope,  AccessFlags.ReadWrite);
             builder.UseBuffer (pass.Positions, AccessFlags.Write);
             builder.AllowGlobalStateModification(true);
 
@@ -338,23 +335,40 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         private void AllocateRtHandles(int size)
         {
-            var heightDesc = new RenderTextureDescriptor(size, size) { graphicsFormat = GraphicsFormat.R32G32_SFloat };
+            var heightDesc = new RenderTextureDescriptor(size, size)
+            {
+                graphicsFormat = GraphicsFormat.R16G16_SFloat,
+                memoryless = RenderTextureMemoryless.Color
+            };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _heightRT, heightDesc, FilterMode.Bilinear);
 
             var depthDesc = new RenderTextureDescriptor(size, size)
             {
                 graphicsFormat = GraphicsFormat.None,
-                depthStencilFormat = GraphicsFormat.D32_SFloat
+                depthStencilFormat = GraphicsFormat.D32_SFloat,
+                memoryless = RenderTextureMemoryless.Depth
             };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _heightDepthRT, depthDesc, FilterMode.Bilinear);
 
-            var maskDesc = new RenderTextureDescriptor(size, size) { graphicsFormat = GraphicsFormat.R32_SFloat };
+            var maskDesc = new RenderTextureDescriptor(size, size)
+            {
+                graphicsFormat = GraphicsFormat.R16_SFloat,
+                memoryless = RenderTextureMemoryless.Color
+            };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _maskRT, maskDesc, FilterMode.Bilinear);
 
-            var colorDesc = new RenderTextureDescriptor(size, size) { graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat };
+            var colorDesc = new RenderTextureDescriptor(size, size)
+            {
+                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
+                memoryless = RenderTextureMemoryless.Color
+            };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _colorRT, colorDesc, FilterMode.Bilinear);
 
-            var slopeDesc = new RenderTextureDescriptor(size, size) { graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat };
+            var slopeDesc = new RenderTextureDescriptor(size, size)
+            {
+                graphicsFormat = GraphicsFormat.R16G16B16A16_SFloat,
+                memoryless = RenderTextureMemoryless.Color
+            };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
         }
 
