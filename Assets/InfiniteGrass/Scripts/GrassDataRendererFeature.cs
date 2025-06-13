@@ -38,6 +38,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
     public override void Create()
     {
+        if (!heightMapMat || !computeShader)
+        {
+            Debug.LogWarning("GrassDataRendererFeature is missing required assets");
+            return;
+        }
+
         _grassDataPass = new GrassDataPass(heightMapLayer, heightMapMat, computeShader)
         {
             // AfterRenderingPrePasses keeps the work early while depth‑texture is valid
@@ -47,6 +53,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
+        if (_grassDataPass == null)
+            return;
+
+        if (renderingData.cameraData.cameraType != CameraType.Game)
+            return;
+
         _grassDataPass.Setup(renderingData);
         renderer.EnqueuePass(_grassDataPass);
     }
@@ -252,11 +264,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float textureThreshold,
             float maxBufferCount)
         {
-            _grassPositionsBuffer?.Release();
-            _grassPositionsBuffer = new GraphicsBuffer(
-                GraphicsBuffer.Target.Append,
-                (int)(1000000 * maxBufferCount),
-                sizeof(float) * 4);
+            EnsurePositionBuffer(maxBufferCount);
             _grassPositionsBuffer.SetCounterValue(0);
 
             var posHandle = rg.ImportBuffer(_grassPositionsBuffer);
@@ -356,6 +364,16 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             var slopeDesc = new RenderTextureDescriptor(size, size) { graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat };
             RenderingUtils.ReAllocateHandleIfNeeded(ref _slopeRT, slopeDesc, FilterMode.Bilinear);
+        }
+
+        private void EnsurePositionBuffer(float maxBufferCount)
+        {
+            int required = (int)(1000000 * maxBufferCount);
+            if (_grassPositionsBuffer == null || _grassPositionsBuffer.count != required)
+            {
+                _grassPositionsBuffer?.Release();
+                _grassPositionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Append, required, sizeof(float) * 4);
+            }
         }
 
         public void Dispose()
