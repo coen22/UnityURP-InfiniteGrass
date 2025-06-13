@@ -131,7 +131,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             BuildMaskPass(rg, maskTex, viewMtx, projMtx);
             BuildColorPass(rg, colorTex, viewMtx, projMtx);
             BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
-            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
+            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
         }
 
         #region Render‑Graph sub‑passes
@@ -242,8 +242,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             TextureHandle mask,
             TextureHandle color,
             TextureHandle slope,
-            Vector2 centerPos,
-            Bounds camBounds,
+            Camera       camera,
+            Vector2      centerPos,
+            Bounds       camBounds,
             float spacing,
             float fullDensityDist,
             float densityExp,
@@ -262,10 +263,6 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             using var builder = rg.AddComputePass<ComputePassData>("Grass Compute", out var pass);
             
-            var camera = Camera.main;
-            if (!camera)
-                camera = Camera.current;
-            
             pass.height           = height;
             pass.mask             = mask;
             pass.color            = color;
@@ -275,6 +272,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.cameraVP         = camera.projectionMatrix * camera.worldToCameraMatrix;
             pass.camView          = camera.worldToCameraMatrix;
             pass.camProj          = camera.projectionMatrix;
+            pass.cameraPosition   = camera.transform.position;
             pass.centerPos        = centerPos;
             pass.bounds           = camBounds;
             pass.spacing          = spacing;
@@ -302,7 +300,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 _computeShader.SetFloat (DensityFalloffExponent,d.densityExponent);
                 _computeShader.SetVector(BoundsMin,             d.bounds.min);
                 _computeShader.SetVector(BoundsMax,             d.bounds.max);
-                _computeShader.SetVector(CameraPosition,        camera.transform.position);
+                _computeShader.SetVector(CameraPosition,        d.cameraPosition);
                 _computeShader.SetVector(CenterPos,             d.centerPos);
                 _computeShader.SetFloat (DrawDistance,          d.drawDistance);
                 _computeShader.SetFloat (TextureUpdateThreshold,d.textureThreshold);
@@ -418,6 +416,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             public Matrix4x4 cameraVP;
             public Matrix4x4 camView;      // ← new
             public Matrix4x4 camProj;      // ← new
+            public Vector3   cameraPosition;
             public Vector2  centerPos;
             public Bounds   bounds;
             public float    spacing;
