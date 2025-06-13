@@ -281,10 +281,10 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.DrawDistance     = drawDistance;
             pass.TextureThreshold = textureThreshold;
 
-            builder.UseTexture(pass.Height);
-            builder.UseTexture(pass.Mask);
-            builder.UseTexture(pass.Color);
-            builder.UseTexture(pass.Slope);
+            builder.UseTexture(pass.Height, AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Mask,   AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Color,  AccessFlags.ReadWrite);
+            builder.UseTexture(pass.Slope,  AccessFlags.ReadWrite);
             builder.UseBuffer (pass.Positions, AccessFlags.Write);
             builder.AllowGlobalStateModification(true);
 
