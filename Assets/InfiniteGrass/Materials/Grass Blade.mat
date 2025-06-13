@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseColorTexture:
-        m_Texture: {fileID: 2800000, guid: 5da9fff5b9bccd940a8bd1b8c62e5405, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 0.01, y: 0.01}
         m_Offset: {x: -0.5, y: 0}
     - _MainTex:
@@ -78,7 +78,7 @@ Material:
     - _Color2: {r: 0.19215688, g: 0.5254902, b: 0.2509804, a: 1}
     - _Color3: {r: 0.12941177, g: 0.31764707, b: 0.37647063, a: 1}
     - _ColorA: {r: 0, g: 0.5294118, b: 0.1719094, a: 1}
-    - _ColorB: {r: 0.5109501, g: 0.7529412, b: 0, a: 1}
+    - _ColorB: {r: 0.47906843, g: 0.7075472, b: 0, a: 1}
     - _ExpandDistantGrassRange: {r: 10, g: 300, b: 0, a: 0}
     - _GroundColor: {r: 0.045567818, g: 0.3018868, b: 0, a: 1}
     - _WindATiling: {r: 0.1, g: 0.1, b: 0, a: 1}
