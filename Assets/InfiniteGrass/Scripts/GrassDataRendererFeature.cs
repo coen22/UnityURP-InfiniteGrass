@@ -127,112 +127,81 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 -(drawDistance + textureThreshold), drawDistance + textureThreshold,
                 0, camBounds.size.y);
 
-            BuildHeightPass(rg, heightTex, depthTex, viewMtx, projMtx, camBounds);
-            BuildMaskPass(rg, maskTex, viewMtx, projMtx);
-            BuildColorPass(rg, colorTex, viewMtx, projMtx);
-            BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
+            BuildMergedPass(rg, heightTex, maskTex, colorTex, slopeTex, depthTex, viewMtx, projMtx, camBounds);
             BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
         }
 
         #region Render‑Graph sub‑passes
 
-        private void BuildHeightPass(RenderGraph rg, TextureHandle height, TextureHandle depth, Matrix4x4 view, Matrix4x4 proj, Bounds camBounds)
+
+        private void BuildMergedPass(
+            RenderGraph rg,
+            TextureHandle height,
+            TextureHandle mask,
+            TextureHandle color,
+            TextureHandle slope,
+            TextureHandle depth,
+            Matrix4x4    view,
+            Matrix4x4    proj,
+            Bounds       camBounds)
         {
-            var drawSettings = CreateDrawingSettings(_shaderTags, ref _renderingData, _renderingData.cameraData.defaultOpaqueSortFlags);
+            // Height renderer list
+            var heightSettings = CreateDrawingSettings(_shaderTags, ref _renderingData, _renderingData.cameraData.defaultOpaqueSortFlags);
             _heightMapMat.SetVector(BoundsYMinMax, new Vector2(camBounds.min.y, camBounds.max.y));
-            drawSettings.overrideMaterial = _heightMapMat;
-            var filterSettings = new FilteringSettings(RenderQueueRange.all, _heightMapLayer);
-            var rlDesc = new RendererListParams(_renderingData.cullResults, drawSettings, filterSettings);
-            var rl = rg.CreateRendererList(rlDesc);
+            heightSettings.overrideMaterial = _heightMapMat;
+            var heightFilter = new FilteringSettings(RenderQueueRange.all, _heightMapLayer);
+            var heightRlDesc = new RendererListParams(_renderingData.cullResults, heightSettings, heightFilter);
+            var heightList = rg.CreateRendererList(heightRlDesc);
 
-            using var builder = rg.AddRasterRenderPass<HeightPassData>("Grass Height", out var pass);
-            pass.RendererList = rl;
-            pass.Color = height;
-            pass.Depth = depth;
-            pass.View = view;
+            // Mask renderer list
+            var maskSettings = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref _renderingData, SortingCriteria.CommonTransparent);
+            var maskFilter = new FilteringSettings(RenderQueueRange.all);
+            var maskRl = rg.CreateRendererList(new RendererListParams(_renderingData.cullResults, maskSettings, maskFilter));
+
+            // Color renderer list
+            var colorSettings = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref _renderingData, SortingCriteria.CommonTransparent);
+            var colorFilter = new FilteringSettings(RenderQueueRange.all);
+            var colorRl = rg.CreateRendererList(new RendererListParams(_renderingData.cullResults, colorSettings, colorFilter));
+
+            // Slope renderer list
+            var slopeSettings = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref _renderingData, SortingCriteria.CommonTransparent);
+            var slopeFilter = new FilteringSettings(RenderQueueRange.all);
+            var slopeRl = rg.CreateRendererList(new RendererListParams(_renderingData.cullResults, slopeSettings, slopeFilter));
+
+            using var builder = rg.AddRasterRenderPass<MergedPassData>("Grass Merged", out var pass);
+            pass.HeightList = heightList;
+            pass.MaskList   = maskRl;
+            pass.ColorList  = colorRl;
+            pass.SlopeList  = slopeRl;
+            pass.Height     = height;
+            pass.Mask       = mask;
+            pass.Color      = color;
+            pass.Slope      = slope;
+            pass.Depth      = depth;
+            pass.View       = view;
             pass.Projection = proj;
 
-            builder.SetRenderAttachment(pass.Color, 0);
+            builder.SetRenderAttachment(pass.Height, 0);
+            builder.SetRenderAttachment(pass.Mask,   1);
+            builder.SetRenderAttachment(pass.Color,  2);
+            builder.SetRenderAttachment(pass.Slope,  3);
             builder.SetRenderAttachmentDepth(pass.Depth);
-            builder.UseRendererList(pass.RendererList);
-            builder.SetRenderFunc((HeightPassData data, RasterGraphContext ctx) =>
+
+            builder.UseRendererList(pass.HeightList);
+            builder.UseRendererList(pass.MaskList);
+            builder.UseRendererList(pass.ColorList);
+            builder.UseRendererList(pass.SlopeList);
+
+            builder.SetRenderFunc((MergedPassData d, RasterGraphContext ctx) =>
             {
                 var cmd = ctx.cmd;
-                cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.black);
-                cmd.DrawRendererList(data.RendererList);
-            });
-        }
-
-        private void BuildMaskPass(RenderGraph rg, TextureHandle mask, Matrix4x4 view, Matrix4x4 proj)
-        {
-            var drawSettings = CreateDrawingSettings(new ShaderTagId("GrassMask"), ref _renderingData, SortingCriteria.CommonTransparent);
-            var filterSettings = new FilteringSettings(RenderQueueRange.all);
-            var rlDesc = new RendererListParams(_renderingData.cullResults, drawSettings, filterSettings);
-            var rl = rg.CreateRendererList(rlDesc);
-
-            using var builder = rg.AddRasterRenderPass<MaskPassData>("Grass Mask", out var pass);
-            pass.RendererList = rl;
-            pass.Color = mask;
-            pass.View = view;
-            pass.Projection = proj;
-
-            builder.SetRenderAttachment(pass.Color, 0);
-            builder.UseRendererList(pass.RendererList);
-            builder.SetRenderFunc((MaskPassData data, RasterGraphContext ctx) =>
-            {
-                var cmd = ctx.cmd;
-                cmd.SetViewProjectionMatrices(data.View, data.Projection);
+                cmd.SetViewProjectionMatrices(d.View, d.Projection);
+                // Clear all targets once before drawing
                 cmd.ClearRenderTarget(true, true, Color.clear);
-                cmd.DrawRendererList(data.RendererList);
-            });
-        }
-
-        private void BuildColorPass(RenderGraph rg, TextureHandle color, Matrix4x4 view, Matrix4x4 proj)
-        {
-            var drawSettings = CreateDrawingSettings(new ShaderTagId("GrassColor"), ref _renderingData, SortingCriteria.CommonTransparent);
-            var filterSettings = new FilteringSettings(RenderQueueRange.all);
-            var rlDesc = new RendererListParams(_renderingData.cullResults, drawSettings, filterSettings);
-            var rl = rg.CreateRendererList(rlDesc);
-
-            using var builder = rg.AddRasterRenderPass<ColorPassData>("Grass Color", out var pass);
-            pass.RendererList = rl;
-            pass.Color = color;
-            pass.View = view;
-            pass.Projection = proj;
-
-            builder.SetRenderAttachment(pass.Color, 0);
-            builder.UseRendererList(pass.RendererList);
-            builder.SetRenderFunc((ColorPassData data, RasterGraphContext ctx) =>
-            {
-                var cmd = ctx.cmd;
-                cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.clear);
-                cmd.DrawRendererList(data.RendererList);
-            });
-        }
-
-        private void BuildSlopePass(RenderGraph rg, TextureHandle slope, Matrix4x4 view, Matrix4x4 proj)
-        {
-            var drawSettings = CreateDrawingSettings(new ShaderTagId("GrassSlope"), ref _renderingData, SortingCriteria.CommonTransparent);
-            var filterSettings = new FilteringSettings(RenderQueueRange.all);
-            var rlDesc = new RendererListParams(_renderingData.cullResults, drawSettings, filterSettings);
-            var rl = rg.CreateRendererList(rlDesc);
-
-            using var builder = rg.AddRasterRenderPass<SlopePassData>("Grass Slope", out var pass);
-            pass.RendererList = rl;
-            pass.Color = slope;
-            pass.View = view;
-            pass.Projection = proj;
-
-            builder.SetRenderAttachment(pass.Color, 0);
-            builder.UseRendererList(pass.RendererList);
-            builder.SetRenderFunc((SlopePassData data, RasterGraphContext ctx) =>
-            {
-                var cmd = ctx.cmd;
-                cmd.SetViewProjectionMatrices(data.View, data.Projection);
-                cmd.ClearRenderTarget(true, true, Color.clear);
-                cmd.DrawRendererList(data.RendererList);
+                cmd.DrawRendererList(d.HeightList);
+                cmd.DrawRendererList(d.MaskList);
+                cmd.DrawRendererList(d.ColorList);
+                cmd.DrawRendererList(d.SlopeList);
             });
         }
 
@@ -403,35 +372,17 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 // --------------------------------------------------------------------------------------
 // SUPPORT TYPES (Render Graph pass‑data structs)
 // --------------------------------------------------------------------------------------
-public sealed class HeightPassData
+public sealed class MergedPassData
 {
-    public RendererListHandle RendererList;
+    public RendererListHandle HeightList;
+    public RendererListHandle MaskList;
+    public RendererListHandle ColorList;
+    public RendererListHandle SlopeList;
+    public TextureHandle Height;
+    public TextureHandle Mask;
     public TextureHandle Color;
+    public TextureHandle Slope;
     public TextureHandle Depth;
-    public Matrix4x4 View;
-    public Matrix4x4 Projection;
-}
-
-public sealed class MaskPassData
-{
-    public RendererListHandle RendererList;
-    public TextureHandle Color;
-    public Matrix4x4 View;
-    public Matrix4x4 Projection;
-}
-
-public sealed class ColorPassData
-{
-    public RendererListHandle RendererList;
-    public TextureHandle Color;
-    public Matrix4x4 View;
-    public Matrix4x4 Projection;
-}
-
-public sealed class SlopePassData
-{
-    public RendererListHandle RendererList;
-    public TextureHandle Color;
     public Matrix4x4 View;
     public Matrix4x4 Projection;
 }
