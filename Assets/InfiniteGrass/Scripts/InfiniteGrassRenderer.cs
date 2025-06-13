@@ -9,6 +9,11 @@ public class InfiniteGrassRenderer : MonoBehaviour
 {
     [HideInInspector] public static InfiniteGrassRenderer instance;//Global ref of the script
 
+    // Camera used during the latest render pass. Scene view uses its own
+    // camera while the game view uses the main camera. This property is
+    // updated by GrassDataRendererFeature so the scene view renders correctly.
+    [NonSerialized] internal Camera currentRenderCamera;
+
     [Header("Internal")]
     public Material grassMaterial;
     public ComputeBuffer argsBuffer;
@@ -58,8 +63,11 @@ public class InfiniteGrassRenderer : MonoBehaviour
 
         if (spacing == 0 || grassMaterial == null) return;
 
-        Bounds cameraBounds = CalculateCameraBounds(Camera.main);
-        Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+        Camera cam = currentRenderCamera ? currentRenderCamera : Camera.main;
+        if (!cam) return;
+
+        Bounds cameraBounds = CalculateCameraBounds(cam);
+        Vector2 centerPos = new Vector2(Mathf.Floor(cam.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(cam.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
         
         //Args Buffer ---------------------------------------------------------------------------------
         argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
@@ -98,7 +106,10 @@ public class InfiniteGrassRenderer : MonoBehaviour
             tBuffer.GetData(count);//Reading back data from GPU
 
             //Recalculating the GridSize used for dispatching
-            Bounds cameraBounds = CalculateCameraBounds(Camera.main);
+            Camera cam = currentRenderCamera ? currentRenderCamera : Camera.main;
+            if (!cam) return;
+
+            Bounds cameraBounds = CalculateCameraBounds(cam);
             Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(cameraBounds.size.x / spacing), Mathf.CeilToInt(cameraBounds.size.z / spacing));
 
             GUI.Label(new Rect(50, 50, 400, 200), "Dispatch Size : " + gridSize.x + "x" + gridSize.y + " = " + (gridSize.x * gridSize.y), style);

@@ -47,6 +47,17 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
     {
+        var cameraData = renderingData.cameraData;
+
+        // Only run for the main game camera or the Scene view. Skip overlay and
+        // preview cameras to avoid jitter when multiple cameras render in the
+        // same frame.
+        if (cameraData.renderType == CameraRenderType.Overlay ||
+            (cameraData.cameraType != CameraType.Game && cameraData.cameraType != CameraType.SceneView))
+        {
+            return;
+        }
+
         _grassDataPass.Setup(renderingData);
         renderer.EnqueuePass(_grassDataPass);
     }
@@ -108,6 +119,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var slopeTex = rg.ImportTexture(_slopeRT);
 
             var camera = _renderingData.cameraData.camera;
+            if (InfiniteGrassRenderer.instance)
+                InfiniteGrassRenderer.instance.currentRenderCamera = camera;
             var spacing = InfiniteGrassRenderer.instance.spacing;
             var fullDensityDist = InfiniteGrassRenderer.instance.fullDensityDistance;
             var drawDistance = InfiniteGrassRenderer.instance.drawDistance;
