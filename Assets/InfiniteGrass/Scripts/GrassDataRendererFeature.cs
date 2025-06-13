@@ -77,6 +77,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private RTHandle _maskRT;
         private RTHandle _colorRT;
         private RTHandle _slopeRT;
+        private RTHandle _hizRT;
         private GraphicsBuffer _grassPositionsBuffer;
 
         private readonly LayerMask _heightMapLayer;
@@ -137,7 +138,14 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var hizCtrl = HizBufferController.instance;
             if (hizCtrl == null || hizCtrl.Texture == null)
                 return;
-            var hizTex = rg.ImportTexture(hizCtrl.Texture);
+
+            if (_hizRT == null || _hizRT.rt != hizCtrl.Texture)
+            {
+                _hizRT?.Release();
+                _hizRT = RTHandles.Alloc(hizCtrl.Texture);
+            }
+
+            var hizTex = rg.ImportTexture(_hizRT);
             BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, hizTex, hizCtrl.TextureSize, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
         }
 
@@ -379,6 +387,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             _maskRT?.Release();
             _colorRT?.Release();
             _slopeRT?.Release();
+            _hizRT?.Release();
             _grassPositionsBuffer?.Release();
         }
 
