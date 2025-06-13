@@ -17,6 +17,10 @@ float4x4 _VPMatrix;
 
 SamplerState linearClampSampler;
 
+float2 _HiZTextureSize;
+Texture2D<float4> _HiZMap;
+SamplerState sampler_HiZMap;
+
 //Generated and passedby the Custom Renderer Feature
 Texture2D<float2> _GrassHeightMapRT;
 Texture2D<float> _GrassMaskMapRT;
@@ -42,6 +46,59 @@ float random(int index)
 float Remap(float In, float2 InMinMax, float2 OutMinMax)
 {
     return OutMinMax.x + (In - InMinMax.x) * (OutMinMax.y - OutMinMax.x) / (InMinMax.y - InMinMax.x);
+}
+
+uint IsVisibleAfterFrustumCulling(float4 clipPos)
+{
+    return (clipPos.z > clipPos.w
+            || clipPos.x < -clipPos.w
+            || clipPos.x > clipPos.w
+            || clipPos.y < -clipPos.w
+            || clipPos.y > clipPos.w) ? 0 : 1;
+}
+
+uint IsVisibleAfterOcclusionCulling(float clipMinX, float clipMaxX, float clipMinY, float clipMaxY, float clipMinZ)
+{
+    float2 minXY = float2(clipMinX, clipMinY) * 0.5 + 0.5;
+    float2 maxXY = float2(clipMaxX, clipMaxY) * 0.5 + 0.5;
+
+    int2 size = (maxXY - minXY) * _HiZTextureSize.xy;
+    float mip = ceil(log2(max(size.x, size.y)));
+    mip = clamp(mip, 0, 10);
+
+    float level_lower = max(mip - 1, 0);
+    float2 scale = exp2(-level_lower);
+    float2 a = floor(minXY * scale);
+    float2 b = ceil(maxXY * scale);
+    float2 dims = b - a;
+
+    if (dims.x <= 2 && dims.y <= 2)
+    {
+        mip = level_lower;
+    }
+
+    const int xSamples = 8;
+    const int ySamples = 25;
+    const float widthSS = (maxXY.x - minXY.x);
+    const float heightSS = (maxXY.y - minXY.y);
+    const float stepX = widthSS / xSamples;
+    const float stepY = heightSS / ySamples;
+
+    float HIZdepth = 1;
+    float yPos = minXY.y;
+    for (int y = 0; y < ySamples; ++y)
+    {
+        float xPos = minXY.x;
+        for (int x = 0; x < xSamples; ++x)
+        {
+            float2 nCoords0 = float2(xPos, yPos);
+            HIZdepth = min(HIZdepth, _HiZMap.SampleLevel(sampler_HiZMap, nCoords0, mip).r);
+            xPos += stepX;
+        }
+        yPos += stepY;
+    }
+
+    return (1.0 - clipMinZ) > HIZdepth - 0.000015;
 }
 
 [numthreads(8, 8, 1)]
@@ -88,12 +145,47 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
         if (insideDensityLevel)
         {
-            //Frustum culling using the clip position (Taken from Colin Leung repo)
-            float4 absPosCS = abs(mul(_VPMatrix, float4(positionWS, 1.0)));
-		
-            if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _DrawDistance)
+            float3 minPos = positionWS + float3(0, 0.8, 0) - float3(0.75 * 0.5, 0.8, 0.75 * 0.5);
+            float3 maxPos = positionWS + float3(0, 0.8, 0) + float3(0.75 * 0.5, 0.8, 0.75 * 0.5);
+
+            float4 boxCorners[8];
+            boxCorners[0] = float4(minPos.x, minPos.y, minPos.z, 1.0);
+            boxCorners[1] = float4(minPos.x, minPos.y, maxPos.z, 1.0);
+            boxCorners[2] = float4(minPos.x, maxPos.y, minPos.z, 1.0);
+            boxCorners[3] = float4(minPos.x, maxPos.y, maxPos.z, 1.0);
+            boxCorners[4] = float4(maxPos.x, minPos.y, minPos.z, 1.0);
+            boxCorners[5] = float4(maxPos.x, minPos.y, maxPos.z, 1.0);
+            boxCorners[6] = float4(maxPos.x, maxPos.y, minPos.z, 1.0);
+            boxCorners[7] = float4(maxPos.x, maxPos.y, maxPos.z, 1.0);
+
+            float4 clipPos = mul(_VPMatrix, boxCorners[0]);
+            uint isInFrustum = IsVisibleAfterFrustumCulling(clipPos);
+
+            clipPos.xyz /= clipPos.w;
+            float clipMinX = clipPos.x;
+            float clipMaxX = clipPos.x;
+            float clipMinY = clipPos.y;
+            float clipMaxY = clipPos.y;
+            float clipMinZ = clipPos.z;
+
+            [unroll]
+            for (int i = 1; i < 8; i++)
             {
-                //Finally after succeeding all the tests our little position is appended to the buffer
+                clipPos = mul(_VPMatrix, boxCorners[i]);
+                isInFrustum = saturate(isInFrustum + IsVisibleAfterFrustumCulling(clipPos));
+                clipPos.xyz /= clipPos.w;
+                clipMinX = min(clipPos.x, clipMinX);
+                clipMaxX = max(clipPos.x, clipMaxX);
+                clipMinY = min(clipPos.y, clipMinY);
+                clipMaxY = max(clipPos.y, clipMaxY);
+                clipMinZ = min(clipPos.z, clipMinZ);
+            }
+
+            uint isVisible = isInFrustum;
+            isVisible *= IsVisibleAfterOcclusionCulling(clipMinX, clipMaxX, clipMinY, clipMaxY, clipMinZ);
+
+            if (isVisible > 0 && distanceFromCamera <= _DrawDistance)
+            {
                 _GrassPositions.Append(float4(positionWS, distanceFromCamera));
             }
         }

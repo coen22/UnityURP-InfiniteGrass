@@ -29,6 +29,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
     private static readonly int GrassHeightMapRT = Shader.PropertyToID("_GrassHeightMapRT");
     private static readonly int GrassMaskMapRT = Shader.PropertyToID("_GrassMaskMapRT");
     private static readonly int BoundsYMinMax = Shader.PropertyToID("_BoundsYMinMax");
+    private static readonly int HiZMap = Shader.PropertyToID("_HiZMap");
+    private static readonly int HiZTextureSize = Shader.PropertyToID("_HiZTextureSize");
 
     [SerializeField] private LayerMask heightMapLayer;
     [SerializeField] private Material heightMapMat;
@@ -131,7 +133,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             BuildMaskPass(rg, maskTex, viewMtx, projMtx);
             BuildColorPass(rg, colorTex, viewMtx, projMtx);
             BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
-            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
+
+            var hizCtrl = HizBufferController.instance;
+            if (hizCtrl == null || hizCtrl.Texture == null)
+                return;
+            var hizTex = rg.ImportTexture(hizCtrl.Texture);
+            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, hizTex, hizCtrl.TextureSize, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
         }
 
         #region Render‑Graph sub‑passes
@@ -242,6 +249,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             TextureHandle mask,
             TextureHandle color,
             TextureHandle slope,
+            TextureHandle hiz,
+            Vector2      hizSize,
             Camera       camera,
             Vector2      centerPos,
             Bounds       camBounds,
@@ -267,6 +276,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.Mask             = mask;
             pass.Color            = color;
             pass.Slope            = slope;
+            pass.HiZMap          = hiz;
+            pass.HiZSize         = hizSize;
             pass.Positions        = posHandle;
             pass.PositionBuffer   = _grassPositionsBuffer;
             pass.CameraVp         = camera.projectionMatrix * camera.worldToCameraMatrix;
@@ -285,6 +296,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             builder.UseTexture(pass.Mask);
             builder.UseTexture(pass.Color);
             builder.UseTexture(pass.Slope);
+            builder.UseTexture(pass.HiZMap);
             builder.UseBuffer (pass.Positions, AccessFlags.Write);
             builder.AllowGlobalStateModification(true);
 
@@ -304,7 +316,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 _computeShader.SetFloat (DrawDistance,          d.DrawDistance);
                 _computeShader.SetFloat (TextureUpdateThreshold,d.TextureThreshold);
                 _computeShader.SetFloat (Spacing,               d.Spacing);
-                
+                _computeShader.SetVector(HiZTextureSize,        d.HiZSize);
+
                 Vector2Int gridSize  = new(
                     Mathf.CeilToInt(d.Bounds.size.x / d.Spacing),
                     Mathf.CeilToInt(d.Bounds.size.z / d.Spacing));
@@ -317,6 +330,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 _computeShader.SetBuffer (0, GrassPositions,   d.PositionBuffer);
                 _computeShader.SetTexture(0, GrassHeightMapRT, d.Height);
                 _computeShader.SetTexture(0, GrassMaskMapRT,   d.Mask);
+                _computeShader.SetTexture(0, HiZMap,           d.HiZMap);
 
                 cmd.DispatchCompute(_computeShader, 0,
                     Mathf.CeilToInt((float)gridSize.x / 8),
@@ -455,4 +469,6 @@ public sealed class ComputePassData
     public float DensityExponent;
     public float DrawDistance;
     public float TextureThreshold;
+    public TextureHandle HiZMap;
+    public Vector2 HiZSize;
 }
