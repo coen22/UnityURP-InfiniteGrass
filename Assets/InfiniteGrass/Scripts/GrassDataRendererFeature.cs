@@ -124,7 +124,10 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 Mathf.Floor(camera.transform.position.z / textureThreshold) * textureThreshold);
 
             // Static ortho from top looking down – fits the area we care about
-            var viewMtx = Matrix4x4.TRS(new Vector3(centerPos.x, camBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
+            var viewMtx = Matrix4x4.TRS(
+                new Vector3(centerPos.x, camBounds.max.y, centerPos.y),
+                Quaternion.LookRotation(Vector3.down, Vector3.forward),
+                new Vector3(1, 1, -1)).inverse;
             var projMtx = Matrix4x4.Ortho(
                 -(drawDistance + textureThreshold), drawDistance + textureThreshold,
                 -(drawDistance + textureThreshold), drawDistance + textureThreshold,
@@ -288,7 +291,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.HiZSize         = hizSize;
             pass.Positions        = posHandle;
             pass.PositionBuffer   = _grassPositionsBuffer;
-            pass.CameraVp         = camera.projectionMatrix * camera.worldToCameraMatrix;
+            var gpuProjection = GL.GetGPUProjectionMatrix(camera.projectionMatrix, false);
+            pass.CameraVp         = gpuProjection * camera.worldToCameraMatrix;
             pass.CamView          = camera.worldToCameraMatrix;
             pass.CamProjection          = camera.projectionMatrix;
             pass.CameraPosition   = camera.transform.position;
