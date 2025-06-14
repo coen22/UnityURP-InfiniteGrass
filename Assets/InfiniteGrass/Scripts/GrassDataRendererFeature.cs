@@ -258,6 +258,22 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float textureThreshold,
             float maxBufferCount)
         {
+            var renderer = InfiniteGrassRenderer.Instance;
+
+            renderer.ArgsBuffer?.Release();
+            renderer.Buffer?.Release();
+
+            renderer.ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+            renderer.Buffer     = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+
+            var args = new uint[5];
+            args[0] = renderer.GetGrassMeshCache().GetIndexCount(0);
+            args[1] = (uint)(maxBufferCount * 1000000);
+            args[2] = renderer.GetGrassMeshCache().GetIndexStart(0);
+            args[3] = renderer.GetGrassMeshCache().GetBaseVertex(0);
+            args[4] = 0;
+            renderer.ArgsBuffer.SetData(args);
+
             _grassPositionsBuffer?.Release();
             _grassPositionsBuffer = new GraphicsBuffer(
                 GraphicsBuffer.Target.Append,

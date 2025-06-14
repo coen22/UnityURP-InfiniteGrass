@@ -66,24 +66,6 @@ public class InfiniteGrassRenderer : MonoBehaviour
         Buffer?.Release();
     }
 
-    void LateUpdate()
-    {
-        ArgsBuffer?.Release();
-        Buffer?.Release();
-        
-        //Args Buffer ---------------------------------------------------------------------------------
-        ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-        Buffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-
-        var args = new uint[5];
-        args[0] = GetGrassMeshCache().GetIndexCount(0);
-        args[1] = (uint)(maxBufferCount * 1000000);
-        args[2] = GetGrassMeshCache().GetIndexStart(0);
-        args[3] = GetGrassMeshCache().GetBaseVertex(0);
-        args[4] = 0;
-        ArgsBuffer.SetData(args);
-    }
-
     private void UpdateMaterial()
     {
         if (spacing <= 0 || !grassMaterial) 
