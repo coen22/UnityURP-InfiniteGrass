@@ -1,0 +1,16 @@
+{
+  "name": "com.example.infinitigrass",
+  "version": "0.1.0",
+  "displayName": "Infinite Grass",
+  "description": "Fully procedural dynamic grass using URP Render Graph API.",
+  "unity": "2023.3",
+  "dependencies": {
+    "com.unity.render-pipelines.universal": ">=17.1.0"
+  },
+  "samples": [
+    {
+      "displayName": "Sample Scene",
+      "path": "Samples~/SampleScene"
+    }
+  ]
+}
