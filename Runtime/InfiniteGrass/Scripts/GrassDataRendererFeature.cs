@@ -1,6 +1,3 @@
-// Upgrade‑safe version for URP 17.1+ (Render Graph only)
-// Place this file in Assets/InfiniteGrass/Scripts/
-
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
