@@ -349,7 +349,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     InfiniteGrassRenderer.instance.GetGrassMeshCache(),
                     0,
                     InfiniteGrassRenderer.instance.grassMaterial,
-                    data.Bounds,
+                    0,
                     InfiniteGrassRenderer.instance.argsBuffer);
             });
         }
