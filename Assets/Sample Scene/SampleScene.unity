@@ -15325,7 +15325,7 @@ MonoBehaviour:
   drawDistance: 200
   subdivisionDistance: 100
   fullDensityDistance: 0.5
-  densityFalloffExponent: 4
+  densityFalloffExponent: 2
   subdivisionHeightBoost: 2
   subdivisionBumpWidth: 25
   grassMeshSubdivision: 5

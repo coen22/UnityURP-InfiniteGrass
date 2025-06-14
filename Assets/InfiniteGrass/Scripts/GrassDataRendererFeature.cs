@@ -122,6 +122,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             if (InfiniteGrassRenderer.Instance)
             {
+                InfiniteGrassRenderer.Instance.cameraBounds = camBounds;
                 InfiniteGrassRenderer.Instance.grassMaterial.SetVector(CenterPos, centerPos);   
             }
             
