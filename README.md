@@ -1,6 +1,6 @@
 # UnityURP-InfiniteGrass
 Fully Procedural and Dynamic Grass for Unity URP.
- 
+
 It meant to be a fast to implement grass system that doesn't need any baking or having any static environemnt.</br>
 Just enable it, give it the LayerMask of the objects where you want it to be, and everything gets drawn procedurally.
 
@@ -67,15 +67,16 @@ The material includes a lot of parameters to customize the look. Increasing
 before they fade out.</br></br>
 ![image](https://github.com/user-attachments/assets/ca5d7ff4-063a-49a3-bebb-c8bc92162576)
 
-## Performance
-With: Spacing = 0.1 | DrawDistance = 300 | Full Density Distance = 40 | Grass Subdivision = 2
-In 1080p, I get an average fps of 200 in my RTX 3060.
-
-It's around 20M position tested and 800K visible grass blades rendered every frame.
-
-## To be Added
-- We are testing more than 20M positions and adding to the buffer only 800K, so maybe we could lower the size of the compute dispatch by implementing Chunking (Somehow, not sure if that's possible in this setup)
-
-## References
-- Colin Leung Repo: https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample
-- Eric Hu Repo : https://github.com/EricHu33/UnityGrassIndirectRenderingExample
+## Performance Optimizations  <!-- NEW -->
+| Tip                                                                     | Why it helps                                                   |
+|-------------------------------------------------------------------------|----------------------------------------------------------------|
+| **Merge Height/Mask/Color/Slope into a single MRT pass**                | Draw once, write four outputs, removing three raster passes.   |
+| **Pack formats and use R16/R8 where possible**                          | Shrinks bandwidth and memory.                                  |
+| **Mark intermediate textures as transient + memoryless**                | Keeps them on-chip on tile-based GPUs.                         |
+| **Enable `AllowPassCulling(true)` on all sub-passes**                   | URP drops work when no renderers hit the layer mask.           |
+| **Reuse the camera depth buffer instead of a custom copy**              | One less resolve and allocation.                               |
+| **Run the compute stage on the async queue**                            | Overlaps grass generation with opaque rendering.               |
+| **Persist `GraphicsBuffer` objects across frames**                      | Avoids costly allocation on Quest-class devices and consoles.  |
+| **Keep `ArgsBuffer` alive and update only the draw count**              | Same allocation benefit; indirect draw remains valid.          |
+| **Skip the entire feature when the camera is outside the world bounds** | Zero graph recording cost for indoor scenes or menus.          |
+| **Hi-Z culling**                                                        | Reduces the number of grass cells generated in the distance.   |
