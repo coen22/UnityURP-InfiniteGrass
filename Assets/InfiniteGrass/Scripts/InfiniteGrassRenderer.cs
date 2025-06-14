@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [ExecuteAlways]
 public class InfiniteGrassRenderer : MonoBehaviour
@@ -44,8 +45,10 @@ public class InfiniteGrassRenderer : MonoBehaviour
 
     [Header("Debug (Enabling this will make the performance drop a lot)")]
     public bool previewVisibleGrassCount;
-
+    
     private Mesh _cachedGrassMesh;
+    
+    [HideInInspector] public Bounds cameraBounds;
 
     private void OnValidate()
     {
@@ -66,24 +69,6 @@ public class InfiniteGrassRenderer : MonoBehaviour
         Buffer?.Release();
     }
 
-    void LateUpdate()
-    {
-        ArgsBuffer?.Release();
-        Buffer?.Release();
-        
-        //Args Buffer ---------------------------------------------------------------------------------
-        ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-        Buffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-
-        var args = new uint[5];
-        args[0] = GetGrassMeshCache().GetIndexCount(0);
-        args[1] = (uint)(maxBufferCount * 1000000);
-        args[2] = GetGrassMeshCache().GetIndexStart(0);
-        args[3] = GetGrassMeshCache().GetBaseVertex(0);
-        args[4] = 0;
-        ArgsBuffer.SetData(args);
-    }
-
     private void UpdateMaterial()
     {
         if (spacing <= 0 || !grassMaterial) 
@@ -97,6 +82,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
         grassMaterial.SetFloat(MaxSubdivision, grassMeshSubdivision);
     }
 
+#if DEBUG
     private void OnGUI()
     {
         if (previewVisibleGrassCount)
@@ -108,14 +94,19 @@ public class InfiniteGrassRenderer : MonoBehaviour
             var count = new uint[1];
             Buffer.GetData(count);//Reading back data from GPU
 
+            if (cameraBounds == default(Bounds) || cameraBounds.size == Vector3.zero)
+            {
+                cameraBounds = CalculateCameraBounds(Camera.main);
+            }
+            
             //Recalculating the GridSize used for dispatching
-            Bounds cameraBounds = CalculateCameraBounds(Camera.main);
             Vector2Int gridSize = new Vector2Int(Mathf.CeilToInt(cameraBounds.size.x / spacing), Mathf.CeilToInt(cameraBounds.size.z / spacing));
 
             GUI.Label(new Rect(50, 50, 400, 200), "Dispatch Size : " + gridSize.x + "x" + gridSize.y + " = " + (gridSize.x * gridSize.y), style);
             GUI.Label(new Rect(50, 80, 400, 200), "Visible Grass Count : " + count[0], style);
         }
     }
+#endif
 
     private int _oldSubdivision = -1;
     public Mesh GetGrassMeshCache() //Code to generate the grass blade mesh based on the subdivision value
