@@ -78,9 +78,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
         grassMaterial.SetFloat("_SubdivisionBumpWidth", subdivisionBumpWidth);
         grassMaterial.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
         grassMaterial.SetFloat("_MaxSubdivision", grassMeshSubdivision);
-
-        //Big Draw Call -------------------------------------------------------------
-        Graphics.DrawMeshInstancedIndirect(GetGrassMeshCache(), 0, grassMaterial, cameraBounds, argsBuffer);
+        // Rendering now occurs from the RenderGraph pass after the compute stage
     }
 
     private void OnGUI()

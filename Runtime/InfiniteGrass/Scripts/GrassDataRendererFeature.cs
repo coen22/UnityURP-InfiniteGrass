@@ -129,6 +129,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             BuildColorPass(rg, colorTex, viewMtx, projMtx);
             BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
             BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
+            BuildDrawPass(rg, camBounds);
         }
 
         #region Render‑Graph sub‑passes
@@ -331,6 +332,28 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             });
         }
 
+        private void BuildDrawPass(RenderGraph rg, Bounds camBounds)
+        {
+            using var builder = rg.AddRasterRenderPass<DrawPassData>("Grass Draw", out var pass);
+            pass.Positions = rg.ImportBuffer(_grassPositionsBuffer);
+            pass.Bounds = camBounds;
+
+            builder.UseBuffer(pass.Positions, AccessFlags.Read);
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((DrawPassData data, RasterGraphContext ctx) =>
+            {
+                var cmd = ctx.cmd;
+                cmd.SetGlobalBuffer(GrassPositions, _grassPositionsBuffer);
+                cmd.DrawMeshInstancedIndirect(
+                    InfiniteGrassRenderer.instance.GetGrassMeshCache(),
+                    0,
+                    InfiniteGrassRenderer.instance.grassMaterial,
+                    data.Bounds,
+                    InfiniteGrassRenderer.instance.argsBuffer);
+            });
+        }
+
         #endregion
 
         private void AllocateRtHandles(int size)
@@ -452,4 +475,10 @@ public sealed class ComputePassData
     public float DensityExponent;
     public float DrawDistance;
     public float TextureThreshold;
+}
+
+public sealed class DrawPassData
+{
+    public BufferHandle Positions;
+    public Bounds Bounds;
 }
