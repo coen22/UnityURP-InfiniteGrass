@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 
@@ -23,7 +24,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
     public ComputeBuffer Buffer;
 
     [Header("Grass Properties")]
-    public float spacing = 0.5f;//Spacing between blades, Please don't make it too low
+    [Range(0.01f, 0.1f)] public float spacing = 0.1f;//Spacing between blades, Please don't make it too low
     public float drawDistance = 300;
     public float subdivisionDistance = 100;//Distance where grass mesh subdivisions fade out
     public float fullDensityDistance = 30;//Distance around the camera kept at full density
@@ -46,9 +47,15 @@ public class InfiniteGrassRenderer : MonoBehaviour
 
     private Mesh _cachedGrassMesh;
 
+    private void OnValidate()
+    {
+        UpdateMaterial();
+    }
+
     private void OnEnable()
     {
         Instance = this;
+        UpdateMaterial();
     }
 
     private void OnDisable()
@@ -63,31 +70,25 @@ public class InfiniteGrassRenderer : MonoBehaviour
     {
         ArgsBuffer?.Release();
         Buffer?.Release();
-
-        if (spacing == 0 || !grassMaterial) 
-            return;
-        
-        // TODO not the right way to get the main camera (not the same as renderdata.camera)
-        var camera = Camera.main;
-        if (!camera)
-            camera = Camera.current;
-        
-        Vector2 centerPos = new Vector2(Mathf.Floor(camera.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(camera.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
         
         //Args Buffer ---------------------------------------------------------------------------------
         ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
         Buffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
 
-        uint[] args = new uint[5];
+        var args = new uint[5];
         args[0] = GetGrassMeshCache().GetIndexCount(0);
         args[1] = (uint)(maxBufferCount * 1000000);
         args[2] = GetGrassMeshCache().GetIndexStart(0);
         args[3] = GetGrassMeshCache().GetBaseVertex(0);
         args[4] = 0;
         ArgsBuffer.SetData(args);
+    }
 
-        //Material Setup ------------------------------------------------------------
-        grassMaterial.SetVector(CenterPos, centerPos);
+    private void UpdateMaterial()
+    {
+        if (spacing <= 0 || !grassMaterial) 
+            return;
+        
         grassMaterial.SetFloat(DrawDistance, drawDistance);
         grassMaterial.SetFloat(SubdivisionDistance, subdivisionDistance);
         grassMaterial.SetFloat(SubdivisionHeightBoost, subdivisionHeightBoost);

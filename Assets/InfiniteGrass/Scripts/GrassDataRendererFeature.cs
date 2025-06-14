@@ -120,6 +120,11 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 Mathf.Floor(camera.transform.position.x / textureThreshold) * textureThreshold,
                 Mathf.Floor(camera.transform.position.z / textureThreshold) * textureThreshold);
 
+            if (InfiniteGrassRenderer.Instance)
+            {
+                InfiniteGrassRenderer.Instance.grassMaterial.SetVector(CenterPos, centerPos);   
+            }
+            
             // Static ortho from top looking down – fits the area we care about
             var viewMtx = Matrix4x4.TRS(new Vector3(centerPos.x, camBounds.max.y, centerPos.y), Quaternion.LookRotation(-Vector3.up), new Vector3(1, 1, -1)).inverse;
             var projMtx = Matrix4x4.Ortho(
