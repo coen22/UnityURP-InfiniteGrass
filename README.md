@@ -1,5 +1,6 @@
 # UnityURP-InfiniteGrass
 Fully Procedural and Dynamic Grass for Unity URP.
+Distributed as a Unity Package Manager (UPM) package and relying on the URP Render Graph API available in version 17.1 or later.
  
 It meant to be a fast to implement grass system that doesn't need any baking or having any static environemnt.</br>
 Just enable it, give it the LayerMask of the objects where you want it to be, and everything gets drawn procedurally.
@@ -8,9 +9,9 @@ Just enable it, give it the LayerMask of the objects where you want it to be, an
 Tested on RTX 3060: https://youtu.be/NwVtPIxUuCY
 
 ### How to Use
-Just drag the "InfiniteGrass" folder to your project then go to your URP settings and add the "GrassDataRendererFeature" to it.</br>
-From there choose the LayerMask of your Terrain mesh.</br>
-Assign the Material and the ComputeShader (Included in the folder).</br></br>
+Install the package via the Unity Package Manager by adding the repository URL to your project's manifest.</br>
+After installation, add the **GrassDataRendererFeature** to your URP renderer.</br>
+From there choose the LayerMask of your Terrain mesh and assign the included material and compute shader.</br></br>
 ![image](https://github.com/user-attachments/assets/c673ac00-ec45-4300-847a-7854c105efff)
 
 Next, in your scene, make an empty object and add the "InfiniteGrassRenderer" script to it.</br>
@@ -75,6 +76,7 @@ It's around 20M position tested and 800K visible grass blades rendered every fra
 
 ## To be Added
 - We are testing more than 20M positions and adding to the buffer only 800K, so maybe we could lower the size of the compute dispatch by implementing Chunking (Somehow, not sure if that's possible in this setup)
+- Combining the height, mask, color and slope passes into a single pass could further improve performance.
 
 ## References
 - Colin Leung Repo: https://github.com/ColinLeung-NiloCat/UnityURP-MobileDrawMeshInstancedIndirectExample

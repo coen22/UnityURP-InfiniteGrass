@@ -1,0 +1,8 @@
+{
+  "name": "InfiniteGrass",
+  "references": [
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.Burst"
+  ]
+}
