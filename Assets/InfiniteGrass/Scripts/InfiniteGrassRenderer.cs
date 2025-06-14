@@ -1,18 +1,26 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static Unity.Burst.Intrinsics.X86.Avx;
 
 [ExecuteAlways]
 public class InfiniteGrassRenderer : MonoBehaviour
 {
-    [HideInInspector] public static InfiniteGrassRenderer instance;//Global ref of the script
+    public static InfiniteGrassRenderer Instance;
+    private static readonly int CenterPos = Shader.PropertyToID("_CenterPos");
+    private static readonly int DrawDistance = Shader.PropertyToID("_DrawDistance");
+    private static readonly int SubdivisionDistance = Shader.PropertyToID("_SubdivisionDistance");
+    private static readonly int SubdivisionHeightBoost = Shader.PropertyToID("_SubdivisionHeightBoost");
+    private static readonly int SubdivisionBumpWidth = Shader.PropertyToID("_SubdivisionBumpWidth");
+    private static readonly int TextureUpdateThreshold = Shader.PropertyToID("_TextureUpdateThreshold");
+    private static readonly int MaxSubdivision = Shader.PropertyToID("_MaxSubdivision");
 
     [Header("Internal")]
     public Material grassMaterial;
-    public ComputeBuffer argsBuffer;
-    public ComputeBuffer tBuffer;//Just a temp buffer to preview the visible grass count
+    public ComputeBuffer ArgsBuffer;
+    
+    /// <summary>
+    /// Just a temp buffer to preview the visible grass count
+    /// </summary>
+    public ComputeBuffer Buffer;
 
     [Header("Grass Properties")]
     public float spacing = 0.5f;//Spacing between blades, Please don't make it too low
@@ -23,7 +31,7 @@ public class InfiniteGrassRenderer : MonoBehaviour
     public float densityFalloffExponent = 4f;
 
     [Header("Subdivision Height Bump")]
-    [Tooltip("Extra height applied near the Subdivision Distance")] public float subdivisionHeightBoost = 0f;
+    [Tooltip("Extra height applied near the Subdivision Distance")] public float subdivisionHeightBoost;
     [Tooltip("Width of the height bump around the Subdivision Distance")] public float subdivisionBumpWidth = 20f;
     public int grassMeshSubdivision = 5;//How many sections you will have in your grass blade mesh, 0 will give a triangle, having more sections will make the wind animation and the curvature looks better
     public float textureUpdateThreshold = 10.0f;//The distance that the camera should move before we update the "Data Textures"
@@ -34,56 +42,58 @@ public class InfiniteGrassRenderer : MonoBehaviour
     //Also don't make it too low cause it's gonna negativly impact the performance
 
     [Header("Debug (Enabling this will make the performance drop a lot)")]
-    public bool previewVisibleGrassCount = false;
+    public bool previewVisibleGrassCount;
 
-    private Mesh cachedGrassMesh;
+    private Mesh _cachedGrassMesh;
 
     private void OnEnable()
     {
-        instance = this;
+        Instance = this;
     }
 
     private void OnDisable()
     {
-        instance = null;
+        Instance = null;
 
-        argsBuffer?.Release();
-        tBuffer?.Release();
+        ArgsBuffer?.Release();
+        Buffer?.Release();
     }
 
     void LateUpdate()
     {
-        argsBuffer?.Release();
-        tBuffer?.Release();
+        ArgsBuffer?.Release();
+        Buffer?.Release();
 
-        if (spacing == 0 || grassMaterial == null) return;
-
-        Bounds cameraBounds = CalculateCameraBounds(Camera.main);
-        Vector2 centerPos = new Vector2(Mathf.Floor(Camera.main.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(Camera.main.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
+        if (spacing == 0 || !grassMaterial) 
+            return;
+        
+        // TODO not the right way to get the main camera (not the same as renderdata.camera)
+        var camera = Camera.main;
+        if (!camera)
+            camera = Camera.current;
+        
+        Vector2 centerPos = new Vector2(Mathf.Floor(camera.transform.position.x / textureUpdateThreshold) * textureUpdateThreshold, Mathf.Floor(camera.transform.position.z / textureUpdateThreshold) * textureUpdateThreshold);
         
         //Args Buffer ---------------------------------------------------------------------------------
-        argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-        tBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+        ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        Buffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
 
         uint[] args = new uint[5];
-        args[0] = (uint)GetGrassMeshCache().GetIndexCount(0);
+        args[0] = GetGrassMeshCache().GetIndexCount(0);
         args[1] = (uint)(maxBufferCount * 1000000);
-        args[2] = (uint)GetGrassMeshCache().GetIndexStart(0);
-        args[3] = (uint)GetGrassMeshCache().GetBaseVertex(0);
+        args[2] = GetGrassMeshCache().GetIndexStart(0);
+        args[3] = GetGrassMeshCache().GetBaseVertex(0);
         args[4] = 0;
-        argsBuffer.SetData(args);
+        ArgsBuffer.SetData(args);
 
         //Material Setup ------------------------------------------------------------
-        grassMaterial.SetVector("_CenterPos", centerPos);
-        grassMaterial.SetFloat("_DrawDistance", drawDistance);
-        grassMaterial.SetFloat("_SubdivisionDistance", subdivisionDistance);
-        grassMaterial.SetFloat("_SubdivisionHeightBoost", subdivisionHeightBoost);
-        grassMaterial.SetFloat("_SubdivisionBumpWidth", subdivisionBumpWidth);
-        grassMaterial.SetFloat("_TextureUpdateThreshold", textureUpdateThreshold);
-        grassMaterial.SetFloat("_MaxSubdivision", grassMeshSubdivision);
-
-        //Big Draw Call -------------------------------------------------------------
-        Graphics.DrawMeshInstancedIndirect(GetGrassMeshCache(), 0, grassMaterial, cameraBounds, argsBuffer);
+        grassMaterial.SetVector(CenterPos, centerPos);
+        grassMaterial.SetFloat(DrawDistance, drawDistance);
+        grassMaterial.SetFloat(SubdivisionDistance, subdivisionDistance);
+        grassMaterial.SetFloat(SubdivisionHeightBoost, subdivisionHeightBoost);
+        grassMaterial.SetFloat(SubdivisionBumpWidth, subdivisionBumpWidth);
+        grassMaterial.SetFloat(TextureUpdateThreshold, textureUpdateThreshold);
+        grassMaterial.SetFloat(MaxSubdivision, grassMeshSubdivision);
     }
 
     private void OnGUI()
@@ -91,11 +101,11 @@ public class InfiniteGrassRenderer : MonoBehaviour
         if (previewVisibleGrassCount)
         {
             GUI.contentColor = Color.black;
-            GUIStyle style = new GUIStyle();
+            var style = new GUIStyle();
             style.fontSize = 25;
 
-            uint[] count = new uint[1];
-            tBuffer.GetData(count);//Reading back data from GPU
+            var count = new uint[1];
+            Buffer.GetData(count);//Reading back data from GPU
 
             //Recalculating the GridSize used for dispatching
             Bounds cameraBounds = CalculateCameraBounds(Camera.main);
@@ -106,12 +116,12 @@ public class InfiniteGrassRenderer : MonoBehaviour
         }
     }
 
-    int oldSubdivision = -1;
+    private int _oldSubdivision = -1;
     public Mesh GetGrassMeshCache() //Code to generate the grass blade mesh based on the subdivision value
     {
-        if (!cachedGrassMesh || oldSubdivision != grassMeshSubdivision)//Dont update unless its necessary
+        if (!_cachedGrassMesh || _oldSubdivision != grassMeshSubdivision)//Dont update unless its necessary
         {
-            cachedGrassMesh = new Mesh();
+            _cachedGrassMesh = new Mesh();
 
             Vector3[] vertices = new Vector3[3 + 4 * grassMeshSubdivision];//Total number of vertices
             int[] triangles = new int[(1 + 2 * grassMeshSubdivision) * 3];//(Total number of faces) * 3
@@ -155,15 +165,16 @@ public class InfiniteGrassRenderer : MonoBehaviour
             triangles[grassMeshSubdivision * 6 + 1] = grassMeshSubdivision * 4 + 1;
             triangles[grassMeshSubdivision * 6 + 2] = grassMeshSubdivision * 4 + 2;
 
-            cachedGrassMesh.SetVertices(vertices);
-            cachedGrassMesh.SetTriangles(triangles, 0);
+            _cachedGrassMesh.SetVertices(vertices);
+            _cachedGrassMesh.SetTriangles(triangles, 0);
 
-            oldSubdivision = grassMeshSubdivision;
+            _oldSubdivision = grassMeshSubdivision;
         }
         
-        return cachedGrassMesh;
+        return _cachedGrassMesh;
     }
-    Bounds CalculateCameraBounds(Camera camera)
+
+    private Bounds CalculateCameraBounds(Camera camera)
     {
         Vector3 ntopLeft = camera.ViewportToWorldPoint(new Vector3(0, 1, camera.nearClipPlane));
         Vector3 ntopRight = camera.ViewportToWorldPoint(new Vector3(1, 1, camera.nearClipPlane));

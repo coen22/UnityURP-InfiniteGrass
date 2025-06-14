@@ -94,7 +94,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         // All work happens here – URP 17.1 ignores Configure/Execute when RecordRenderGraph exists
         public override void RecordRenderGraph(RenderGraph rg, ContextContainer frameData)
         {
-            if (!InfiniteGrassRenderer.instance || !_heightMapMat || !_computeShader)
+            if (!InfiniteGrassRenderer.Instance || !_heightMapMat || !_computeShader)
                 return;
 
             const int textureSize = 2048;
@@ -108,12 +108,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var slopeTex = rg.ImportTexture(_slopeRT);
 
             var camera = _renderingData.cameraData.camera;
-            var spacing = InfiniteGrassRenderer.instance.spacing;
-            var fullDensityDist = InfiniteGrassRenderer.instance.fullDensityDistance;
-            var drawDistance = InfiniteGrassRenderer.instance.drawDistance;
-            var densityExp = InfiniteGrassRenderer.instance.densityFalloffExponent;
-            var textureThreshold = InfiniteGrassRenderer.instance.textureUpdateThreshold;
-            var maxBufferCount = InfiniteGrassRenderer.instance.maxBufferCount;
+            var spacing = InfiniteGrassRenderer.Instance.spacing;
+            var fullDensityDist = InfiniteGrassRenderer.Instance.fullDensityDistance;
+            var drawDistance = InfiniteGrassRenderer.Instance.drawDistance;
+            var densityExp = InfiniteGrassRenderer.Instance.densityFalloffExponent;
+            var textureThreshold = InfiniteGrassRenderer.Instance.textureUpdateThreshold;
+            var maxBufferCount = InfiniteGrassRenderer.Instance.maxBufferCount;
 
             var camBounds = CalculateCameraBounds(camera, drawDistance);
             var centerPos = new Vector2(
@@ -132,6 +132,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             BuildColorPass(rg, colorTex, viewMtx, projMtx);
             BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
             BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
+            BuildDrawPass(rg, frameData, camBounds);
         }
 
         #region Render‑Graph sub‑passes
@@ -324,13 +325,46 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                     1);
 
                 cmd.SetGlobalBuffer(GrassPositions, d.PositionBuffer);
-                cmd.CopyCounterValue(d.PositionBuffer, InfiniteGrassRenderer.instance.argsBuffer, 4);
+                cmd.CopyCounterValue(d.PositionBuffer, InfiniteGrassRenderer.Instance.ArgsBuffer, 4);
 
-                if (InfiniteGrassRenderer.instance.previewVisibleGrassCount)
-                    cmd.CopyCounterValue(d.PositionBuffer, InfiniteGrassRenderer.instance.tBuffer, 0);
+                if (InfiniteGrassRenderer.Instance.previewVisibleGrassCount)
+                    cmd.CopyCounterValue(d.PositionBuffer, InfiniteGrassRenderer.Instance.Buffer, 0);
 
                 /* --- reset to the camera’s own matrices --- */
                 cmd.SetViewProjectionMatrices(d.CamView, d.CamProjection);
+            });
+        }
+        
+        private void BuildDrawPass(RenderGraph rg, ContextContainer frameData, Bounds camBounds)
+        {
+            // URP exposes the current camera targets through UniversalResourceData
+            var resources   = frameData.Get<UniversalResourceData>();
+            var colorTarget = resources.activeColorTexture;
+            var depthTarget = resources.activeDepthTexture;
+
+            using var builder = rg.AddRasterRenderPass<DrawPassData>("Grass Draw", out var pass);
+            pass.Positions = rg.ImportBuffer(_grassPositionsBuffer);
+            pass.Color     = colorTarget;
+            pass.Depth     = depthTarget;
+
+            builder.UseBuffer(pass.Positions, AccessFlags.Read);
+
+            // These two lines make the pass output to the camera’s colour and depth buffers
+            builder.SetRenderAttachment(pass.Color, 0);   // colour-attachment 0
+            builder.SetRenderAttachmentDepth(pass.Depth); // depth attachment
+
+            builder.AllowGlobalStateModification(true);
+
+            builder.SetRenderFunc((DrawPassData data, RasterGraphContext ctx) =>
+            {
+                var cmd = ctx.cmd;
+                cmd.SetGlobalBuffer(GrassPositions, _grassPositionsBuffer);
+                cmd.DrawMeshInstancedIndirect(
+                    InfiniteGrassRenderer.Instance.GetGrassMeshCache(),
+                    0,
+                    InfiniteGrassRenderer.Instance.grassMaterial,
+                    0,
+                    InfiniteGrassRenderer.Instance.ArgsBuffer);
             });
         }
 
@@ -455,4 +489,11 @@ public sealed class ComputePassData
     public float DensityExponent;
     public float DrawDistance;
     public float TextureThreshold;
+}
+
+public sealed class DrawPassData
+{
+    public BufferHandle Positions;
+    public TextureHandle Color;
+    public TextureHandle Depth;
 }
