@@ -256,7 +256,7 @@ Transform:
   m_GameObject: {fileID: 95567784}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.65, y: -2.1, z: 23.97}
+  m_LocalPosition: {x: -6.65, y: -2.1, z: 39.08}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -15325,13 +15325,16 @@ MonoBehaviour:
   drawDistance: 200
   subdivisionDistance: 100
   fullDensityDistance: 0.5
-  densityFalloffExponent: 2
+  densityFalloffExponent: 5
   subdivisionHeightBoost: 2
   subdivisionBumpWidth: 25
-  grassMeshSubdivision: 5
+  grassMeshSubdivision: 3
   textureUpdateThreshold: 10
   maxBufferCount: 4
   previewVisibleGrassCount: 0
+  cameraBounds:
+    m_Center: {x: -31.30928, y: -100.10125, z: 151.629}
+    m_Extent: {x: 330.46173, y: 110.29124, z: 154.75912}
 --- !u!1 &1034065410
 GameObject:
   m_ObjectHideFlags: 0
@@ -20468,7 +20471,7 @@ Transform:
   m_GameObject: {fileID: 1371514383}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -13.9, y: -2.59, z: 20.3}
+  m_LocalPosition: {x: 2.72, y: -0.15, z: 20.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -20873,7 +20876,7 @@ Transform:
   m_GameObject: {fileID: 1485970910}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.18, y: -1.72, z: 16.01}
+  m_LocalPosition: {x: -28.97, y: -1.72, z: 19.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -20906,7 +20909,7 @@ Transform:
   m_GameObject: {fileID: 1597239522}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 14.01, y: 0.42, z: 17.02}
+  m_LocalPosition: {x: 18.72, y: 0.42, z: 17.02}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
