@@ -1,0 +1,20 @@
+{
+  "name": "com.cone.grass",
+  "version": "1.0.0",
+  "displayName": "Infinite Grass",
+  "description": "Fully Procedural and Dynamic Grass for Unity URP.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Youssef Afella"
+  },
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "17.1.0"
+  },
+  "samples": [
+    {
+      "displayName": "Sample Scene",
+      "description": "Demonstrates usage of the Infinite Grass renderer.",
+      "path": "Samples~/SampleScene"
+    }
+  ]
+}
