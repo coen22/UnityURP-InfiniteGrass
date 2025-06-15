@@ -1,5 +1,5 @@
 # UnityURP-InfiniteGrass
-Fully Procedural and Dynamic Grass for Unity URP.
+Fully Procedural and Dynamic Grass for Unity URP. This repository is structured as a Unity Package (UPM).
 
 It meant to be a fast to implement grass system that doesn't need any baking or having any static environemnt.</br>
 Just enable it, give it the LayerMask of the objects where you want it to be, and everything gets drawn procedurally.
@@ -8,13 +8,13 @@ Just enable it, give it the LayerMask of the objects where you want it to be, an
 Tested on RTX 3060: https://youtu.be/NwVtPIxUuCY
 
 ### How to Use
-Just drag the "InfiniteGrass" folder to your project then go to your URP settings and add the "GrassDataRendererFeature" to it.</br>
+Install this repository as a Git package through the Unity Package Manager then add the "GrassDataRendererFeature" to your URP Renderer.</br>
 From there choose the LayerMask of your Terrain mesh.</br>
-Assign the Material and the ComputeShader (Included in the folder).</br></br>
+Assign the Material and the ComputeShader (included in the package).</br></br>
 ![image](https://github.com/user-attachments/assets/c673ac00-ec45-4300-847a-7854c105efff)
 
 Next, in your scene, make an empty object and add the "InfiniteGrassRenderer" script to it.</br>
-Assign the Grass Material (Included in the folder) and play with the settings until you get what you want.</br></br>
+Assign the Grass Material (included in the package) and play with the settings until you get what you want.</br></br>
 ![image](https://github.com/user-attachments/assets/cd034441-e707-45ac-88bc-c103c21d3713)
 
 # Features
