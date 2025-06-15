@@ -9,5 +9,12 @@
   },
   "dependencies": {
     "com.unity.render-pipelines.universal": "17.1.0"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Sample Scene",
+      "description": "Demonstrates usage of the Infinite Grass renderer.",
+      "path": "Samples~/SampleScene"
+    }
+  ]
 }
