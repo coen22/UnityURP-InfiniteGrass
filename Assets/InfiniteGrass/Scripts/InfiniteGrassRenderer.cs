@@ -43,6 +43,10 @@ public class InfiniteGrassRenderer : MonoBehaviour
     //Don't make it too high cause that gonna impact performance, usually 2 - 3 should be enough unless you are using a crazy spacing
     //Also don't make it too low cause it's gonna negativly impact the performance
 
+    [Header("Performance")]
+    [Tooltip("Dispatch the compute shader every other frame on capable hardware")]
+    public bool dispatchComputeEverySecondFrame = false;
+
     [Header("Debug (Enabling this will make the performance drop a lot)")]
     public bool previewVisibleGrassCount;
     

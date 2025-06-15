@@ -82,6 +82,9 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         private readonly ComputeShader _computeShader;
         private RenderingData _renderingData;
 
+        private Vector2 _lastTextureCenter = new Vector2(float.MaxValue, float.MaxValue);
+        private int _frameCounter;
+
         public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
         {
             _heightMapLayer = heightMapLayer;
@@ -117,8 +120,14 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
             var camBounds = CalculateCameraBounds(camera, drawDistance);
             var centerPos = new Vector2(
-                Mathf.Floor(camera.transform.position.x / textureThreshold) * textureThreshold,
-                Mathf.Floor(camera.transform.position.z / textureThreshold) * textureThreshold);
+                Mathf.Floor(camera.transform.position.x / spacing) * spacing,
+                Mathf.Floor(camera.transform.position.z / spacing) * spacing);
+
+            bool updateTextures = Vector2.Distance(centerPos, _lastTextureCenter) > textureThreshold;
+            if (updateTextures)
+                _lastTextureCenter = centerPos;
+
+            bool dispatchCompute = !InfiniteGrassRenderer.Instance.dispatchComputeEverySecondFrame || (_frameCounter++ % 2 == 0);
 
             if (InfiniteGrassRenderer.Instance)
             {
@@ -133,11 +142,14 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 -(drawDistance + textureThreshold), drawDistance + textureThreshold,
                 0, camBounds.size.y);
 
-            BuildHeightPass(rg, heightTex, depthTex, viewMtx, projMtx, camBounds);
-            BuildMaskPass(rg, maskTex, viewMtx, projMtx);
-            BuildColorPass(rg, colorTex, viewMtx, projMtx);
-            BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
-            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount);
+            if (updateTextures)
+            {
+                BuildHeightPass(rg, heightTex, depthTex, viewMtx, projMtx, camBounds);
+                BuildMaskPass(rg, maskTex, viewMtx, projMtx);
+                BuildColorPass(rg, colorTex, viewMtx, projMtx);
+                BuildSlopePass(rg, slopeTex, viewMtx, projMtx);
+            }
+            BuildComputePass(rg, heightTex, maskTex, colorTex, slopeTex, camera, centerPos, camBounds, spacing, fullDensityDist, densityExp, drawDistance, textureThreshold, maxBufferCount, dispatchCompute);
             BuildDrawPass(rg, frameData, camBounds);
         }
 
@@ -257,7 +269,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             float densityExp,
             float drawDistance,
             float textureThreshold,
-            float maxBufferCount)
+            float maxBufferCount,
+            bool  dispatchCompute)
         {
             var renderer = InfiniteGrassRenderer.Instance;
 
@@ -303,6 +316,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             pass.DensityExponent  = densityExp;
             pass.DrawDistance     = drawDistance;
             pass.TextureThreshold = textureThreshold;
+            pass.Dispatch        = dispatchCompute;
 
             builder.UseTexture(pass.Height);
             builder.UseTexture(pass.Mask);
@@ -314,6 +328,12 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             builder.SetRenderFunc((ComputePassData d, ComputeGraphContext ctx) =>
             {
                 var cmd = ctx.cmd;
+
+                if (!d.Dispatch)
+                {
+                    cmd.SetGlobalBuffer(GrassPositions, d.PositionBuffer);
+                    return;
+                }
 
                 cmd.SetGlobalTexture(GrassColorRT, d.Color);
                 cmd.SetGlobalTexture(GrassSlopeRT, d.Slope);
@@ -511,6 +531,7 @@ public sealed class ComputePassData
     public float DensityExponent;
     public float DrawDistance;
     public float TextureThreshold;
+    public bool  Dispatch;
 }
 
 public sealed class DrawPassData
