@@ -138,7 +138,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!136 &73974028
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -246,7 +246,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &95567785
 Transform:
   m_ObjectHideFlags: 0
@@ -10424,7 +10424,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &888800554
 Transform:
   m_ObjectHideFlags: 0
@@ -15333,8 +15333,8 @@ MonoBehaviour:
   maxBufferCount: 4
   previewVisibleGrassCount: 0
   cameraBounds:
-    m_Center: {x: 0, y: -42.53389, z: 104.51896}
-    m_Extent: {x: 375.59088, y: 112.960495, z: 110.862724}
+    m_Center: {x: -49.51912, y: -62.190224, z: 141.24988}
+    m_Extent: {x: 381.53162, y: 109.376274, z: 136.6073}
 --- !u!1 &1034065410
 GameObject:
   m_ObjectHideFlags: 0
@@ -15600,7 +15600,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1302018035
 Transform:
   m_ObjectHideFlags: 0
@@ -20498,7 +20498,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1371514384
 Transform:
   m_ObjectHideFlags: 0
@@ -20903,7 +20903,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1485970911
 Transform:
   m_ObjectHideFlags: 0
@@ -20936,7 +20936,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1597239523
 Transform:
   m_ObjectHideFlags: 0
