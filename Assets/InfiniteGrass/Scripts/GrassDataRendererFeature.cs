@@ -119,13 +119,15 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             var maxBufferCount = InfiniteGrassRenderer.Instance.maxBufferCount;
 
             var camBounds = CalculateCameraBounds(camera, drawDistance);
-            var centerPos = new Vector2(
+            var quantizedCenter = new Vector2(
                 Mathf.Floor(camera.transform.position.x / spacing) * spacing,
                 Mathf.Floor(camera.transform.position.z / spacing) * spacing);
 
-            bool updateTextures = Vector2.Distance(centerPos, _lastTextureCenter) > textureThreshold;
+            bool updateTextures = Vector2.Distance(quantizedCenter, _lastTextureCenter) > textureThreshold;
             if (updateTextures)
-                _lastTextureCenter = centerPos;
+                _lastTextureCenter = quantizedCenter;
+
+            var centerPos = _lastTextureCenter;
 
             bool dispatchCompute = !InfiniteGrassRenderer.Instance.dispatchComputeEverySecondFrame || (_frameCounter++ % 2 == 0);
 
@@ -274,26 +276,34 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
         {
             var renderer = InfiniteGrassRenderer.Instance;
 
-            renderer.ArgsBuffer?.Release();
-            renderer.Buffer?.Release();
+            bool needInit = renderer.ArgsBuffer == null ||
+                             renderer.Buffer     == null ||
+                             _grassPositionsBuffer == null;
 
-            renderer.ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-            renderer.Buffer     = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+            if (needInit || dispatchCompute)
+            {
+                renderer.ArgsBuffer?.Release();
+                renderer.Buffer?.Release();
+                _grassPositionsBuffer?.Release();
 
-            var args = new uint[5];
-            args[0] = renderer.GetGrassMeshCache().GetIndexCount(0);
-            args[1] = (uint)(maxBufferCount * 1000000);
-            args[2] = renderer.GetGrassMeshCache().GetIndexStart(0);
-            args[3] = renderer.GetGrassMeshCache().GetBaseVertex(0);
-            args[4] = 0;
-            renderer.ArgsBuffer.SetData(args);
+                renderer.ArgsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+                renderer.Buffer     = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+                _grassPositionsBuffer = new GraphicsBuffer(
+                    GraphicsBuffer.Target.Append,
+                    (int)(1000000 * maxBufferCount),
+                    sizeof(float) * 4);
 
-            _grassPositionsBuffer?.Release();
-            _grassPositionsBuffer = new GraphicsBuffer(
-                GraphicsBuffer.Target.Append,
-                (int)(1000000 * maxBufferCount),
-                sizeof(float) * 4);
-            _grassPositionsBuffer.SetCounterValue(0);
+                var args = new uint[5];
+                args[0] = renderer.GetGrassMeshCache().GetIndexCount(0);
+                args[1] = 0;
+                args[2] = renderer.GetGrassMeshCache().GetIndexStart(0);
+                args[3] = renderer.GetGrassMeshCache().GetBaseVertex(0);
+                args[4] = 0;
+                renderer.ArgsBuffer.SetData(args);
+                _grassPositionsBuffer.SetCounterValue(0);
+            }
+
+            dispatchCompute |= needInit;
 
             var posHandle = rg.ImportBuffer(_grassPositionsBuffer);
 
