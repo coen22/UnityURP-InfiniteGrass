@@ -29,6 +29,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
     private static readonly int GrassHeightMapRT = Shader.PropertyToID("_GrassHeightMapRT");
     private static readonly int GrassMaskMapRT = Shader.PropertyToID("_GrassMaskMapRT");
     private static readonly int BoundsYMinMax = Shader.PropertyToID("_BoundsYMinMax");
+    private static readonly int PrevCameraY = Shader.PropertyToID("_PrevCameraY");
 
     [SerializeField] private LayerMask heightMapLayer;
     [SerializeField] private Material heightMapMat;
@@ -84,6 +85,7 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
 
         private Vector2 _lastTextureCenter = new Vector2(float.MaxValue, float.MaxValue);
         private int _frameCounter;
+        private float _lastComputeCameraHeight = float.NaN;
 
         public GrassDataPass(LayerMask heightMapLayer, Material heightMapMat, ComputeShader computeShader)
         {
@@ -304,6 +306,8 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
             }
 
             dispatchCompute |= needInit;
+            if (dispatchCompute)
+                _lastComputeCameraHeight = camera.transform.position.y;
 
             var posHandle = rg.ImportBuffer(_grassPositionsBuffer);
 
@@ -342,11 +346,13 @@ public class GrassDataRendererFeature : ScriptableRendererFeature
                 if (!d.Dispatch)
                 {
                     cmd.SetGlobalBuffer(GrassPositions, d.PositionBuffer);
+                    cmd.SetGlobalFloat(PrevCameraY, _lastComputeCameraHeight);
                     return;
                 }
 
                 cmd.SetGlobalTexture(GrassColorRT, d.Color);
                 cmd.SetGlobalTexture(GrassSlopeRT, d.Slope);
+                cmd.SetGlobalFloat(PrevCameraY, _lastComputeCameraHeight);
                 _computeShader.SetMatrix(VpMatrix, d.CameraVp);
                 _computeShader.SetFloat (FullDensityDistance,   d.FullDensity);
                 _computeShader.SetFloat (DensityFalloffExponent,d.DensityExponent);

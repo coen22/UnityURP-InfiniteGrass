@@ -86,6 +86,7 @@
                 half _RandomNormal;
 
                 float2 _CenterPos;
+                float  _PrevCameraY;
 
                 float _DrawDistance;
                 float _TextureUpdateThreshold;
@@ -170,6 +171,10 @@
                 float4 positionData = _GrassPositions[instanceID];
                 float3 pivot = positionData.xyz;
                 float distanceFromCamera = positionData.w;
+                float oldDiff = pivot.y - _PrevCameraY;
+                float newDiff = pivot.y - _WorldSpaceCameraPos.y;
+                float newDistSq = distanceFromCamera * distanceFromCamera - oldDiff * oldDiff + newDiff * newDiff;
+                distanceFromCamera = sqrt(max(newDistSq, 0.0));
 
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
