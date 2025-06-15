@@ -3,9 +3,7 @@
 
     Properties
     {
-        [MainTexture] _BaseColorTexture("BaseColor Texture", 2D) = "white" {}
-        _ColorA("ColorA", Color) = (0,0,0,1)
-        _ColorB("ColorB", Color) = (1,1,1,1)
+        _Color("Color", Color) = (0,0,0,1)
         _AOColor("AO Color", Color) = (0.5,0.5,0.5)
 
         [Header(Grass Shape)][Space]
@@ -68,9 +66,7 @@
             };
 
             CBUFFER_START(UnityPerMaterial)
-                half3 _ColorA;
-                half3 _ColorB;
-                float4 _BaseColorTexture_ST;
+                half3 _Color;
                 half3 _AOColor;
 
                 float _GrassWidth;
@@ -101,7 +97,6 @@
 
             CBUFFER_END
 
-            sampler2D _BaseColorTexture;
             sampler2D _WindTexture;
 
             sampler2D _GrassColorRT;
@@ -227,11 +222,8 @@
                 
                 //posWS -> posCS
                 OUT.positionCS = TransformWorldToHClip(positionWS);
-
-
-                half3 baseColor = lerp(_ColorA, _ColorB, tex2Dlod(_BaseColorTexture, float4(TRANSFORM_TEX(pivot.xz, _BaseColorTexture),0,0)).r);
                 
-                half3 albedo = lerp(_AOColor, baseColor, quantizedY);
+                half3 albedo = lerp(_AOColor, _Color, quantizedY);
 
                 float4 color = tex2Dlod(_GrassColorRT, float4(uv, 0, 0));
                 albedo = lerp(albedo, color.rgb, color.a);
