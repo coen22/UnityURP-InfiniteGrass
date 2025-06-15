@@ -63,6 +63,7 @@
             {
                 float4 positionCS  : SV_POSITION;
                 half3 color        : COLOR;
+                half3 normalWS    : TEXCOORD1;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -234,17 +235,22 @@
                 half3 V = normalize(_WorldSpaceCameraPos - positionWS);
 
                 float3 lighting = CalculateLighting(albedo, positionWS, N, V, color.a, quantizedY);
-                //I'm also passing the Alpha Channel of the Color Map cause I dont want the blades that are affected with color to receive specular light 
+                //I'm also passing the Alpha Channel of the Color Map cause I dont want the blades that are affected with color to receive specular light
                 //The main use of the color map for me is burning the grass and the burned grass should not receive specular light
-                
+
                 float fogFactor = ComputeFogFactor(OUT.positionCS.z);
                 OUT.color.rgb = MixFog(lighting, fogFactor);
+                OUT.normalWS = N;
 
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
+                Light ml = GetMainLight();
+                half NdotL = dot(normalize(IN.normalWS), ml.direction);
+                if (NdotL < -0.5)
+                    discard;
                 return half4(IN.color.rgb,1);
             }
             ENDHLSL
