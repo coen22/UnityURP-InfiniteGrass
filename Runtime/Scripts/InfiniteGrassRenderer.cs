@@ -14,6 +14,8 @@ public class InfiniteGrassRenderer : MonoBehaviour
     private static readonly int SubdivisionBumpWidth = Shader.PropertyToID("_SubdivisionBumpWidth");
     private static readonly int TextureUpdateThreshold = Shader.PropertyToID("_TextureUpdateThreshold");
     private static readonly int MaxSubdivision = Shader.PropertyToID("_MaxSubdivision");
+    private static readonly int FullDensityDistanceID = Shader.PropertyToID("_FullDensityDistance");
+    private static readonly int DensityFalloffExponentID = Shader.PropertyToID("_DensityFalloffExponent");
 
     [Header("Internal")]
     public Material grassMaterial;
@@ -80,6 +82,8 @@ public class InfiniteGrassRenderer : MonoBehaviour
         grassMaterial.SetFloat(SubdivisionBumpWidth, subdivisionBumpWidth);
         grassMaterial.SetFloat(TextureUpdateThreshold, textureUpdateThreshold);
         grassMaterial.SetFloat(MaxSubdivision, grassMeshSubdivision);
+        grassMaterial.SetFloat(FullDensityDistanceID, fullDensityDistance);
+        grassMaterial.SetFloat(DensityFalloffExponentID, densityFalloffExponent);
     }
 
 #if DEBUG

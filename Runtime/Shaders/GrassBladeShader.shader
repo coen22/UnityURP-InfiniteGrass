@@ -28,6 +28,8 @@
         _SubdivisionDistance("Subdivision Distance", Float) = 100
         _SubdivisionHeightBoost("Subdivision Height Boost", Float) = 0
         _SubdivisionBumpWidth("Subdivision Bump Width", Float) = 20
+        _FullDensityDistance("Full Density Distance", Float) = 30
+        _DensityFalloffExponent("Density Falloff Exponent", Float) = 4
     }
 
     SubShader
@@ -92,6 +94,9 @@
                 float _SubdivisionDistance;
                 float _SubdivisionHeightBoost;
                 float _SubdivisionBumpWidth;
+
+                float _FullDensityDistance;
+                float _DensityFalloffExponent;
 
                 StructuredBuffer<float4> _GrassPositions;
 
@@ -173,6 +178,10 @@
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
 
+                float aoFalloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
+                aoFalloff = pow(aoFalloff, _DensityFalloffExponent);
+                aoFalloff = saturate(aoFalloff * _FullDensityDistance);
+
                 float lodSubdiv = floor(_MaxSubdivision * saturate(1 - distanceFromCamera / _SubdivisionDistance));
                 float step = 1.0 / (lodSubdiv + 1);
                 float quantizedY = round(IN.positionOS.y / step) * step;
@@ -224,6 +233,7 @@
                 OUT.positionCS = TransformWorldToHClip(positionWS);
                 
                 half3 albedo = lerp(_AOColor, _Color, quantizedY);
+                albedo = lerp(_Color, albedo, aoFalloff);
 
                 float4 color = tex2Dlod(_GrassColorRT, float4(uv, 0, 0));
                 albedo = lerp(albedo, color.rgb, color.a);
