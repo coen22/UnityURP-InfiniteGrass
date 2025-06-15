@@ -178,9 +178,10 @@
                 float2 uv = (pivot.xz - _CenterPos) / (_DrawDistance + _TextureUpdateThreshold);
                 uv = uv * 0.5 + 0.5;
 
-                float aoFalloff = saturate(1.0 - distanceFromCamera / _DrawDistance);
-                aoFalloff = pow(aoFalloff, _DensityFalloffExponent);
-                aoFalloff = saturate(aoFalloff * _FullDensityDistance);
+                // AO strength uses the same distance falloff as blade density
+                float aoDistanceFactor = saturate(1.0 - distanceFromCamera / _DrawDistance);
+                aoDistanceFactor = pow(aoDistanceFactor, _DensityFalloffExponent);
+                aoDistanceFactor = saturate(aoDistanceFactor * _FullDensityDistance);
 
                 float lodSubdiv = floor(_MaxSubdivision * saturate(1 - distanceFromCamera / _SubdivisionDistance));
                 float step = 1.0 / (lodSubdiv + 1);
@@ -232,8 +233,8 @@
                 //posWS -> posCS
                 OUT.positionCS = TransformWorldToHClip(positionWS);
                 
-                half3 albedo = lerp(_AOColor, _Color, quantizedY);
-                albedo = lerp(_Color, albedo, aoFalloff);
+                half3 baseAlbedo = lerp(_AOColor, _Color, quantizedY);
+                half3 albedo = lerp(_Color, baseAlbedo, aoDistanceFactor);
 
                 float4 color = tex2Dlod(_GrassColorRT, float4(uv, 0, 0));
                 albedo = lerp(albedo, color.rgb, color.a);
