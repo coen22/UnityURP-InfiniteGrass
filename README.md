@@ -68,15 +68,22 @@ before they fade out.</br></br>
 ![image](https://github.com/user-attachments/assets/ca5d7ff4-063a-49a3-bebb-c8bc92162576)
 
 ## Performance Optimizations  <!-- NEW -->
-| Tip                                                                     | Why it helps                                                   |
-|-------------------------------------------------------------------------|----------------------------------------------------------------|
-| **Merge Height/Mask/Color/Slope into a single MRT pass**                | Draw once, write four outputs, removing three raster passes.   |
-| **Pack formats and use R16/R8 where possible**                          | Shrinks bandwidth and memory.                                  |
-| **Mark intermediate textures as transient + memoryless**                | Keeps them on-chip on tile-based GPUs.                         |
-| **Enable `AllowPassCulling(true)` on all sub-passes**                   | URP drops work when no renderers hit the layer mask.           |
-| **Reuse the camera depth buffer instead of a custom copy**              | One less resolve and allocation.                               |
-| **Run the compute stage on the async queue**                            | Overlaps grass generation with opaque rendering.               |
-| **Persist `GraphicsBuffer` objects across frames**                      | Avoids costly allocation on Quest-class devices and consoles.  |
-| **Keep `ArgsBuffer` alive and update only the draw count**              | Same allocation benefit; indirect draw remains valid.          |
-| **Skip the entire feature when the camera is outside the world bounds** | Zero graph recording cost for indoor scenes or menus.          |
-| **Hi-Z culling**                                                        | Reduces the number of grass cells generated in the distance.   |
+
+| Tip                                                                                                                      | Why it helps                                                                                           |
+|--------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| **Update the height/mask/ color/ slope textures only when the camera has moved farther than `Texture Update Threshold`** | Skips the four raster passes on frames where nothing in view has changed.                              |
+| **Dispatch the compute shader at half-rate (e.g. every second frame) on high-end GPUs**                                  | The grass position buffer often stays valid for two frames without artefacts, halving compute cost.    |
+| **Quantise the camera-space centre to the grass cell size**                                                              | Ensures cache-friendly reuse of generated cells and avoids frequent buffer resets.                     |
+| **Use `UNITY_VERTEX_OUTPUT_STEREO` only when XR is enabled**                                                             | Removes the extra instancing overhead for mono rendering.                                              |
+| **Pack the height and mask into a single `R16G16` texture**                                                              | Reduces tile memory pressure compared with two separate resources.                                     |
+| **Early-out in the fragment shader when the blade normal faces away from the light by more than 120 °**                  | Saves ALU on back-lit blades that will be alpha-faded anyway.                                          |
+| **Switch distant blades to an unlit material variant once they cross the half draw-distance**                            | Removes per-pixel lighting for the majority of on-screen grass while keeping near blades fully shaded. |
+| **Use `MaterialPropertyBlock` to push per-camera wind parameters**                                                       | Avoids creating material instances and keeps SRP batching intact.                                      |
+| **Batch `GraphicsBuffer.CopyCounterValue` calls together**                                                               | Minimises command-buffer stalls caused by counter queries.                                             |
+| **Enable Hi-Z culling in the compute shader (sample the depth pyramid before appending a position)**                     | Prevents blades that are fully occluded by terrain or large objects from ever being generated.         |
+| **Strip shader variants that keep unused colour or slope channels**                                                      | Shrinks build size and slashes shader warm-up time at launch.                                          |
+
+## Visual Optimizations
+
+- Use an alpha value to fade out distant blades instead of fully cutting them out.
+- Nearby grass should blend smoothly into the terrain texture.
